@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=DLSim
+GenericName=Datalink emulator
+Comment=Emulate a radio datalink with tc/netem
+Exec=dlsim
+Icon=network-wireless
+Terminal=false
+Categories=Network;Development;

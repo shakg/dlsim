@@ -70,9 +70,9 @@ struct Profile {
     bool hasLoss() const;
 };
 
-// Linear interpolation between two profiles, t in [0,1]. Enumerations and
-// integer-like fields that cannot be blended switch to `b` at t >= 0.5.
-// An unlimited rate (0) is treated as 1 Gbit/s while blending.
+// Interpolation between two profiles, t in [0,1]: linear, except rate, which
+// is interpolated on a log scale (an unlimited rate counts as 1 Gbit/s).
+// Fields that cannot be blended (distribution, ...) switch to `b` at t >= 0.5.
 Profile interpolate(const Profile &a, const Profile &b, double t);
 
 // The same profile with 100% random loss: used for CUT LINK.

@@ -669,7 +669,7 @@ void TestTcCommandBuilder::interpolation()
     const Profile m = interpolate(a, b, 0.5);
     QCOMPARE(m.delayMs, 60.0);
     QCOMPARE(m.lossPct, 10.0);
-    QCOMPARE(m.rateKbit, quint64(500500)); // unlimited counts as 1 Gbit/s
+    QCOMPARE(m.rateKbit, quint64(31623)); // geometric mean of 1 Gbit/s (unlimited) and 1 Mbit/s
     QCOMPARE(interpolate(b, a, 1).rateKbit, quint64(0));
     // Different loss models pass through zero loss at the midpoint.
     Profile g;

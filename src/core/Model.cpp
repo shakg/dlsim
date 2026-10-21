@@ -188,8 +188,9 @@ Profile interpolate(const Profile &a, const Profile &b, double t)
 
     const double ra = a.rateKbit ? double(a.rateKbit) : kUnlimitedKbit;
     const double rb = b.rateKbit ? double(b.rateKbit) : kUnlimitedKbit;
-    const double rr = lerp(ra, rb, t);
-    r.rateKbit = rr >= kUnlimitedKbit ? 0 : quint64(std::llround(rr));
+    // Geometric: a fade from 1 Gbit/s to 200 kbit/s should not stay above 100 Mbit/s for 90% of the time.
+    const quint64 rr = quint64(std::llround(std::exp(lerp(std::log(ra), std::log(rb), t))));
+    r.rateKbit = rr >= quint64(kUnlimitedKbit) ? 0 : rr;
 
     // Keep an explicit limit only if both ends set one.
     r.limitPkts = (a.limitPkts && b.limitPkts) ? quint32(std::lround(lerp(a.limitPkts, b.limitPkts, t))) : 0;
