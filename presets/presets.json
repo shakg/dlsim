@@ -1,0 +1,54 @@
+[
+  {
+    "name": "Wired/clean",
+    "description": "No impairment. Baseline.",
+    "uplink": {},
+    "downlink": {}
+  },
+  {
+    "name": "Good LOS",
+    "description": "Clear line of sight, short range. Small delay, rare loss.",
+    "uplink":   { "delayMs": 8,  "jitterMs": 2, "distribution": "normal", "lossPct": 0.1, "rateKbit": 2000 },
+    "downlink": { "delayMs": 8,  "jitterMs": 2, "distribution": "normal", "lossPct": 0.1, "rateKbit": 8000 }
+  },
+  {
+    "name": "Long range",
+    "description": "Several km, lower modulation: more delay and jitter, 1% loss, less bandwidth.",
+    "uplink":   { "delayMs": 35, "jitterMs": 10, "delayCorrPct": 25, "distribution": "normal", "lossPct": 1, "lossCorrPct": 25, "rateKbit": 500 },
+    "downlink": { "delayMs": 35, "jitterMs": 10, "delayCorrPct": 25, "distribution": "normal", "lossPct": 1, "lossCorrPct": 25, "rateKbit": 2000 }
+  },
+  {
+    "name": "Fringe",
+    "description": "Edge of coverage: heavy-tailed delay, bursty loss (Gilbert-Elliott), occasional duplicates and reordering.",
+    "uplink": {
+      "delayMs": 80, "jitterMs": 30, "delayCorrPct": 25, "distribution": "paretonormal",
+      "lossModel": "gemodel", "geP": 3, "geR": 25, "geBadLossPct": 70, "geGoodLossPct": 1,
+      "rateKbit": 200, "duplicatePct": 0.2, "reorderPct": 1, "reorderCorrPct": 25
+    },
+    "downlink": {
+      "delayMs": 80, "jitterMs": 30, "delayCorrPct": 25, "distribution": "paretonormal",
+      "lossModel": "gemodel", "geP": 3, "geR": 25, "geBadLossPct": 70, "geGoodLossPct": 1,
+      "rateKbit": 800, "duplicatePct": 0.2, "reorderPct": 1, "reorderCorrPct": 25
+    }
+  },
+  {
+    "name": "Intermittent",
+    "description": "Link fades in and out: long bursts of total loss (Gilbert-Elliott with 100% loss in the bad state).",
+    "uplink": {
+      "delayMs": 30, "jitterMs": 8, "distribution": "normal",
+      "lossModel": "gemodel", "geP": 1, "geR": 4, "geBadLossPct": 100, "geGoodLossPct": 0.2,
+      "rateKbit": 1000
+    },
+    "downlink": {
+      "delayMs": 30, "jitterMs": 8, "distribution": "normal",
+      "lossModel": "gemodel", "geP": 1, "geR": 4, "geBadLossPct": 100, "geGoodLossPct": 0.2,
+      "rateKbit": 4000
+    }
+  },
+  {
+    "name": "Congested",
+    "description": "Downlink limited to the video bitrate (4 Mbit/s) with a deep queue: telemetry waits behind video.",
+    "uplink":   { "delayMs": 20, "jitterMs": 5, "distribution": "normal", "lossPct": 0.2, "rateKbit": 512, "limitPkts": 100 },
+    "downlink": { "delayMs": 20, "jitterMs": 5, "distribution": "normal", "lossPct": 0.2, "rateKbit": 4000, "limitPkts": 400 }
+  }
+]

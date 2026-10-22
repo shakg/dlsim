@@ -1,0 +1,42 @@
+[
+  {
+    "name": "Outage ladder",
+    "loop": false,
+    "steps": [
+      { "type": "preset", "preset": "Good LOS", "durationS": 20 },
+      { "type": "outage", "durationS": 3 },
+      { "type": "preset", "preset": "Good LOS", "durationS": 30 },
+      { "type": "outage", "durationS": 10 },
+      { "type": "preset", "preset": "Good LOS", "durationS": 60 },
+      { "type": "outage", "durationS": 30 },
+      { "type": "preset", "preset": "Good LOS", "durationS": 120 },
+      { "type": "outage", "durationS": 90 },
+      { "type": "preset", "preset": "Good LOS", "durationS": 180 }
+    ]
+  },
+  {
+    "name": "Fade out and back",
+    "loop": false,
+    "steps": [
+      { "type": "preset", "preset": "Good LOS", "durationS": 20 },
+      { "type": "fade", "preset": "Fringe", "durationS": 30 },
+      { "type": "preset", "preset": "Fringe", "durationS": 20 },
+      { "type": "outage", "durationS": 15 },
+      { "type": "preset", "preset": "Fringe", "durationS": 10 },
+      { "type": "fade", "preset": "Good LOS", "durationS": 30 },
+      { "type": "preset", "preset": "Good LOS", "durationS": 60 }
+    ]
+  },
+  {
+    "name": "Flight loop",
+    "loop": true,
+    "steps": [
+      { "type": "preset", "preset": "Good LOS", "durationS": 30 },
+      { "type": "fade", "preset": "Long range", "durationS": 20 },
+      { "type": "preset", "preset": "Long range", "durationS": 30 },
+      { "type": "fade", "preset": "Intermittent", "durationS": 10 },
+      { "type": "preset", "preset": "Intermittent", "durationS": 30 },
+      { "type": "fade", "preset": "Good LOS", "durationS": 20 }
+    ]
+  }
+]

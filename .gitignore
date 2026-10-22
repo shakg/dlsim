@@ -1,0 +1,6 @@
+build/
+build-*/
+*.user
+CMakeLists.txt.user*
+build-appimage/
+*.AppImage
