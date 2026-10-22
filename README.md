@@ -7,12 +7,6 @@ duplication, reordering, corruption and full outages, separately for
 stay up the whole time: packets are delayed, dropped or throttled, never
 unplugged.
 
-It was built to reproduce one specific problem: after a radio fade, UDP video
-resumes at once but MAVLink-over-TCP telemetry (vehicle 192.0.2.10:4555 ↔
-mavlink-router on 192.0.2.20) stays stuck. The socket monitor shows RTO, backoff,
-retransmits and the TCP timer live, so you can see the backoff or half-open
-connection happen.
-
 It uses only standard tools: `tc` (netem, prio, flower, matchall/mirred),
 `ip` (bridge, ifb) and `ss`. No kernel modules beyond what Ubuntu ships.
 
