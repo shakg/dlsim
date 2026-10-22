@@ -1,0 +1,134 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BUILD_DEPS: >-
+    build-essential cmake ninja-build libgl-dev file patchelf dpkg-dev
+    qt6-base-dev qt6-base-dev-tools qt6-declarative-dev qt6-charts-dev
+    qml6-module-qtquick qml6-module-qtquick-controls qml6-module-qtquick-layouts
+    qml6-module-qtquick-window qml6-module-qtquick-templates
+    qml6-module-qtqml-workerscript qml6-module-qtquick-dialogs
+    qml6-module-qt-labs-folderlistmodel qml6-module-qtcharts qt6-qpa-plugins
+
+jobs:
+  build:
+    name: Build, test, package
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends $BUILD_DEPS
+
+      - name: Check tag matches project version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          version=$(sed -n 's/^project(dlsim VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)
+          [ "v$version" = "$GITHUB_REF_NAME" ] || { echo "tag $GITHUB_REF_NAME != project version $version"; exit 1; }
+
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Unit tests
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Build .deb
+        run: |
+          cd build
+          cpack -G DEB
+          dpkg-deb --info dlsim_*.deb
+          dpkg-deb --contents dlsim_*.deb
+
+      - name: Smoke-test the .deb
+        run: |
+          sudo apt-get install -y ./build/dlsim_*.deb
+          mkdir -p shots/deb
+          QT_QPA_PLATFORM=offscreen DLSIM_NO_HELPER=1 DLSIM_SCREENSHOT=shots/deb timeout 60 dlsim
+          ls shots/deb/page3.png
+
+      - name: Build AppImage
+        run: |
+          if [[ $GITHUB_REF != refs/tags/v* ]]; then export DLSIM_VERSION_SUFFIX="git${GITHUB_SHA::7}"; fi
+          packaging/appimage/build-appimage.sh dist-out
+
+      - name: Smoke-test the AppImage
+        run: |
+          sudo apt-get remove -y dlsim
+          mkdir -p shots/appimage
+          APPIMAGE_EXTRACT_AND_RUN=1 QT_QPA_PLATFORM=offscreen DLSIM_NO_HELPER=1 DLSIM_SCREENSHOT=shots/appimage \
+            timeout 120 ./dist-out/DLSim-*-x86_64.AppImage
+          ls shots/appimage/page3.png
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dlsim-deb
+          path: build/dlsim_*.deb
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dlsim-appimage
+          path: dist-out/DLSim-*-x86_64.AppImage
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: screenshots
+          path: shots/
+          if-no-files-found: ignore
+
+  selftest:
+    name: Self-test (netem in network namespaces)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential cmake ninja-build qt6-base-dev \
+            iproute2 iperf3 jq iputils-ping
+          sudo apt-get install -y "linux-modules-extra-$(uname -r)" || true
+          sudo modprobe -a sch_netem sch_prio ifb cls_flower cls_matchall act_mirred
+
+      - name: Build the helper
+        run: |
+          cmake -S . -B build -G Ninja -DDLSIM_BUILD_GUI=OFF -DDLSIM_BUILD_TESTS=OFF
+          cmake --build build
+
+      - name: Run selftest.sh
+        run: sudo scripts/selftest.sh build/helper/dlsim-helper presets/presets.json
+
+  release:
+    name: GitHub release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build, selftest]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/*.deb
+            artifacts/*.AppImage
+          generate_release_notes: true

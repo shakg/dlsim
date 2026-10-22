@@ -10,6 +10,9 @@
 #include <QProcess>
 
 #include <functional>
+#include <memory>
+
+class QTemporaryDir;
 
 class EventLog;
 
@@ -48,6 +51,7 @@ Q_SIGNALS:
     void commandsExecuted(const QString &op, const QJsonArray &commands);
 
 private:
+    QString stageAppImageHelper(QString *error);
     void setState(State s, const QString &text);
     void onReadyRead();
     void onStderr();
@@ -68,4 +72,5 @@ private:
     qint64 m_nextId = 1;
     QByteArray m_buffer;
     bool m_stopping = false;
+    std::unique_ptr<QTemporaryDir> m_stage; // helper copied out of an AppImage
 };

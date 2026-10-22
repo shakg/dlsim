@@ -48,3 +48,4 @@ qt_add_resources(dlsim "presets"
 
 install(TARGETS dlsim RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(FILES ../dist/dlsim.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
+install(FILES ../dist/dlsim.svg DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)

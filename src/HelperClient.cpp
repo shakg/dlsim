@@ -3,8 +3,11 @@
 #include "EventLog.h"
 
 #include <QCoreApplication>
+#include <QDir>
+#include <QFile>
 #include <QFileInfo>
 #include <QJsonDocument>
+#include <QTemporaryDir>
 
 #include <unistd.h>
 
@@ -26,6 +29,37 @@ QString HelperClient::helperPath() const
     if (built.isExecutable())
         return built.canonicalFilePath();
     return QStringLiteral(DLSIM_HELPER_INSTALL_PATH);
+}
+
+QString HelperClient::stageAppImageHelper(QString *error)
+{
+    // Inside an AppImage the files sit on a FUSE mount that root cannot read,
+    // so pkexec could not start the helper from there. Copy the helper and the
+    // bundled libraries it needs (listed at build time) to a private directory.
+    const QString appDir = qEnvironmentVariable("APPDIR");
+    QFile manifest(appDir + "/usr/libexec/dlsim/helper-files.txt");
+    if (appDir.isEmpty() || !manifest.open(QIODevice::ReadOnly | QIODevice::Text))
+        return {};
+    QString base = qEnvironmentVariable("XDG_RUNTIME_DIR");
+    if (base.isEmpty())
+        base = QDir::tempPath();
+    m_stage = std::make_unique<QTemporaryDir>(base + "/dlsim-helper-XXXXXX");
+    if (!m_stage->isValid()) {
+        *error = QStringLiteral("cannot create %1: %2").arg(m_stage->path(), m_stage->errorString());
+        return {};
+    }
+    const QStringList files = QString::fromUtf8(manifest.readAll()).split('\n', Qt::SkipEmptyParts);
+    for (const QString &rel : files) {
+        if (rel.contains("..") || rel.startsWith('/'))
+            continue;
+        const QString dst = m_stage->filePath(rel);
+        QDir().mkpath(QFileInfo(dst).path());
+        if (!QFile::copy(appDir + '/' + rel, dst)) {
+            *error = QStringLiteral("cannot copy %1 out of the AppImage").arg(rel);
+            return {};
+        }
+    }
+    return m_stage->filePath("usr/libexec/dlsim/dlsim-helper");
 }
 
 void HelperClient::setState(State s, const QString &text)
@@ -54,7 +88,12 @@ void HelperClient::start()
         }
     });
 
-    const QString helper = helperPath();
+    QString helper = helperPath();
+    QString stageError;
+    if (const QString staged = stageAppImageHelper(&stageError); !staged.isEmpty())
+        helper = staged;
+    else if (!stageError.isEmpty())
+        m_log->log("helper", stageError);
     if (!QFileInfo(helper).isExecutable()) {
         setState(Failed, QStringLiteral("helper not found at %1").arg(helper));
         m_log->log("helper", m_statusText);

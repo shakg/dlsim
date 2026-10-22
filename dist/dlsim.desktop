@@ -4,6 +4,6 @@ Name=DLSim
 GenericName=Datalink emulator
 Comment=Emulate a radio datalink with tc/netem
 Exec=dlsim
-Icon=network-wireless
+Icon=dlsim
 Terminal=false
 Categories=Network;Development;

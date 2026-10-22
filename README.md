@@ -21,6 +21,7 @@ It uses only standard tools: `tc` (netem, prio, flower, matchall/mirred),
 - [Operating modes](#operating-modes)
 - [Packages (Ubuntu 24.04)](#packages-ubuntu-2404)
 - [Build, test, install](#build-test-install)
+- [Packages: .deb and AppImage](#packages-deb-and-appimage)
 - [Running](#running)
 - [Using it](#using-it)
 - [Reproducing the TCP telemetry stall](#reproducing-the-tcp-telemetry-stall)
@@ -122,6 +123,43 @@ It then checks CUT/RESTORE, an excluded class passing during a cut,
 `read_stats`, `reset`, cleanup of leftovers after a `kill -9` of the helper,
 and host mode with the IFB (RTT = egress + ingress delay, cleanup on exit).
 Tune with `PINGS=…` and `IPERF_SECONDS=…`. Namespaces are deleted on exit.
+
+## Packages: .deb and AppImage
+
+CI (`.github/workflows/ci.yml`) builds and tests on every push and pull
+request, then produces both packages as workflow artifacts. It also runs
+`selftest.sh` on the runner. Pushing a tag `vX.Y.Z` (matching the version in
+`CMakeLists.txt`) attaches both to a GitHub release.
+
+**.deb** (Ubuntu 24.04):
+
+```sh
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr
+cmake --build build
+(cd build && cpack -G DEB)
+sudo apt install ./build/dlsim_*.deb     # pulls in the QML modules, iproute2, pkexec
+```
+
+**AppImage**:
+
+```sh
+sudo apt install patchelf file qt6-base-dev-tools   # plus the build deps above
+packaging/appimage/build-appimage.sh [output-dir]   # → DLSim-<version>-x86_64.AppImage
+```
+
+The script uses linuxdeploy and linuxdeploy-plugin-qt (downloaded to
+`build-appimage/tools`). The AppImage bundles Qt, so it needs no Qt packages,
+but the host still needs `iproute2` and `pkexec`, and a glibc at least as new
+as Ubuntu 24.04's. Two differences from the .deb:
+
+- No polkit policy is installed, so pkexec asks through its generic
+  "run a program as root" prompt.
+- Root cannot read an AppImage's FUSE mount, so the GUI copies the helper and
+  the libraries it needs (listed in `usr/libexec/dlsim/helper-files.txt`) to a
+  private directory under `$XDG_RUNTIME_DIR`, runs it from there with pkexec,
+  and deletes it on exit.
+
+It bundles the `xcb` (X11 and XWayland) and `offscreen` platform plugins.
 
 ## Running
 
@@ -382,5 +420,7 @@ helper/          dlsim-helper and the polkit policy template
 presets/         built-in presets and scenarios (compiled into the GUI)
 tests/           QtTest unit tests (no root)
 scripts/         selftest.sh (root, namespaces, ping/iperf3)
-dist/            desktop entry
+packaging/       AppImage build script
+dist/            desktop entry and icon
+.github/         CI: build, tests, .deb, AppImage, self-test, releases
 ```
