@@ -117,12 +117,15 @@ ping_stats() {
 }
 
 # udp_rate <client-ns> <server-ip> <kbit> <reverse:0|1> -> received kbit/s
+# Counts datagrams the receiver got (packets - lost). The sender rate times
+# (1 - lost%) overstates it: packets still queued in netem when the test ends
+# show up as neither received nor lost.
 udp_rate() {
     local rev=() json
     [[ $4 == 1 ]] && rev=(-R)
     json=$(timeout $((IPERF_SECONDS + 30)) ip netns exec "$1" iperf3 -c "$2" -u -b "${3}k" -l 1200 \
         -t "$IPERF_SECONDS" --connect-timeout 15000 -J "${rev[@]}" 2>/dev/null) || { echo 0; return; }
-    jq -r '(.end.sum.bits_per_second * (1 - .end.sum.lost_percent / 100) / 1000) | floor' <<<"$json"
+    jq -r '(.end.sum_received // .end.sum) | ((.packets - .lost_packets) * 1200 * 8 / .seconds / 1000) | floor' <<<"$json"
 }
 
 fcmp() { awk "BEGIN { exit !($*) }"; } # fcmp "1.5 < 2"
