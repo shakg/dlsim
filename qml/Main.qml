@@ -65,6 +65,37 @@ ApplicationWindow {
         fileDialog.open()
     }
 
+    // Shared confirmation: pages call ApplicationWindow.window.askConfirm(...).
+    Dialog {
+        id: confirmDialog
+        objectName: "confirmDialog"
+        property var callback
+        property string message
+        property string acceptText: "OK"
+        modal: true
+        parent: Overlay.overlay
+        anchors.centerIn: parent
+        width: 440
+        onAccepted: { const cb = callback; callback = null; if (cb) cb() }
+        onRejected: callback = null
+        footer: DialogButtonBox {
+            Button { text: confirmDialog.acceptText; DialogButtonBox.buttonRole: DialogButtonBox.AcceptRole }
+            Button { text: "Cancel"; DialogButtonBox.buttonRole: DialogButtonBox.RejectRole }
+        }
+        Label {
+            width: parent.width
+            wrapMode: Text.WordWrap
+            text: confirmDialog.message
+        }
+    }
+    function askConfirm(title, message, acceptText, cb) {
+        confirmDialog.title = title
+        confirmDialog.message = message
+        confirmDialog.acceptText = acceptText
+        confirmDialog.callback = cb
+        confirmDialog.open()
+    }
+
     header: Rectangle {
         height: 54
         color: Theme.panel

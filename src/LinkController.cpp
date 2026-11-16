@@ -250,9 +250,7 @@ void LinkController::setClassField(int index, const QString &key, const QVariant
 {
     if (index < 0 || index >= m_edit.classes.size())
         return;
-    QJsonObject o = m_edit.classes[index].toJson();
-    o.insert(key, QJsonValue::fromVariant(value));
-    const TrafficClass c = TrafficClass::fromJson(o);
+    const TrafficClass c = m_edit.classes[index].withField(key, QJsonValue::fromVariant(value));
     if (c == m_edit.classes[index])
         return;
     m_edit.classes[index] = c;

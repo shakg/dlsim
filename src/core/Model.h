@@ -92,6 +92,9 @@ struct TrafficClass {
     QJsonObject toJson() const;
     static TrafficClass fromJson(const QJsonObject &o);
     QStringList validate() const;
+    // Copy with one JSON field replaced. A protocol without ports (any, icmp)
+    // drops the port, so the result never fails "a port needs tcp or udp".
+    TrafficClass withField(const QString &key, const QJsonValue &value) const;
 };
 
 struct LinkConfig {

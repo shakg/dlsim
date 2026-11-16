@@ -71,10 +71,21 @@ void PresetStore::load()
     Q_EMIT scenariosChanged();
 }
 
-bool PresetStore::fail(const QString &msg)
+void PresetStore::setError(Kind kind, const QString &msg)
 {
-    m_lastError = msg;
-    Q_EMIT lastErrorChanged();
+    QString &e = kind == Kind::Preset ? m_presetError : m_scenarioError;
+    if (e == msg)
+        return;
+    e = msg;
+    if (kind == Kind::Preset)
+        Q_EMIT presetErrorChanged();
+    else
+        Q_EMIT scenarioErrorChanged();
+}
+
+bool PresetStore::fail(Kind kind, const QString &msg)
+{
+    setError(kind, msg);
     return false;
 }
 
@@ -116,11 +127,11 @@ QString PresetStore::fileFor(const QString &kind, const QString &name) const
     return QStringLiteral("%1/%2/%3.json").arg(m_dir, kind, safe);
 }
 
-bool PresetStore::writeJson(const QString &path, const QJsonObject &o)
+bool PresetStore::writeJson(Kind kind, const QString &path, const QJsonObject &o)
 {
     QFile f(path);
     if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate))
-        return fail(QStringLiteral("cannot write %1: %2").arg(path, f.errorString()));
+        return fail(kind, QStringLiteral("cannot write %1: %2").arg(path, f.errorString()));
     f.write(QJsonDocument(o).toJson(QJsonDocument::Indented));
     return true;
 }
@@ -153,18 +164,25 @@ QVariantMap PresetStore::preset(const QString &name) const
 
 bool PresetStore::isBuiltinPreset(const QString &name) const { return findByName(m_builtinPresets, name); }
 
+bool PresetStore::userPresetExists(const QString &name) const
+{
+    const QString n = name.trimmed();
+    return !n.isEmpty() && QFile::exists(fileFor("presets", n));
+}
+
 bool PresetStore::savePreset(const QString &name, const QString &description, const QVariantMap &uplink,
                              const QVariantMap &downlink)
 {
+    setError(Kind::Preset, {});
     const QString n = name.trimmed();
     if (n.isEmpty())
-        return fail("preset name is empty");
+        return fail(Kind::Preset, "preset name is empty");
     if (isBuiltinPreset(n))
-        return fail(QStringLiteral("'%1' is a built-in preset; choose another name").arg(n));
+        return fail(Kind::Preset, QStringLiteral("'%1' is a built-in preset; choose another name").arg(n));
     const QJsonObject o = normalizePreset(QJsonObject{
         {"name", n}, {"description", description},
         {"uplink", QJsonObject::fromVariantMap(uplink)}, {"downlink", QJsonObject::fromVariantMap(downlink)}});
-    if (!writeJson(fileFor("presets", n), o))
+    if (!writeJson(Kind::Preset, fileFor("presets", n), o))
         return false;
     load();
     return true;
@@ -172,27 +190,29 @@ bool PresetStore::savePreset(const QString &name, const QString &description, co
 
 bool PresetStore::deletePreset(const QString &name)
 {
+    setError(Kind::Preset, {});
     if (isBuiltinPreset(name))
-        return fail("built-in presets cannot be deleted");
+        return fail(Kind::Preset, "built-in presets cannot be deleted");
     if (!QFile::remove(fileFor("presets", name)))
-        return fail(QStringLiteral("cannot delete preset '%1'").arg(name));
+        return fail(Kind::Preset, QStringLiteral("cannot delete preset '%1'").arg(name));
     load();
     return true;
 }
 
 QString PresetStore::importPreset(const QUrl &file)
 {
+    setError(Kind::Preset, {});
     QString err;
     const QJsonDocument d = readJsonFile(localPath(file), &err);
     if (!d.isObject() || d.object().value("name").toString().trimmed().isEmpty()) {
-        fail(QStringLiteral("not a preset file: %1").arg(err.isEmpty() ? "missing name" : err));
+        fail(Kind::Preset, QStringLiteral("not a preset file: %1").arg(err.isEmpty() ? "missing name" : err));
         return {};
     }
     QJsonObject o = normalizePreset(d.object());
     if (isBuiltinPreset(o.value("name").toString()))
         o["name"] = o.value("name").toString() + " (imported)";
     const QString name = o.value("name").toString();
-    if (!writeJson(fileFor("presets", name), o))
+    if (!writeJson(Kind::Preset, fileFor("presets", name), o))
         return {};
     load();
     return name;
@@ -200,11 +220,12 @@ QString PresetStore::importPreset(const QUrl &file)
 
 bool PresetStore::exportPreset(const QString &name, const QUrl &file)
 {
+    setError(Kind::Preset, {});
     QVariantMap m = preset(name);
     if (m.isEmpty())
-        return fail(QStringLiteral("unknown preset '%1'").arg(name));
+        return fail(Kind::Preset, QStringLiteral("unknown preset '%1'").arg(name));
     m.remove("builtin");
-    return writeJson(localPath(file), QJsonObject::fromVariantMap(m));
+    return writeJson(Kind::Preset, localPath(file), QJsonObject::fromVariantMap(m));
 }
 
 // ---------------------------------------------------------------- scenarios
@@ -235,15 +256,22 @@ QVariantMap PresetStore::scenario(const QString &name) const
 
 bool PresetStore::isBuiltinScenario(const QString &name) const { return findByName(m_builtinScenarios, name); }
 
+bool PresetStore::userScenarioExists(const QString &name) const
+{
+    const QString n = name.trimmed();
+    return !n.isEmpty() && QFile::exists(fileFor("scenarios", n));
+}
+
 bool PresetStore::saveScenario(const QVariantMap &scenario)
 {
+    setError(Kind::Scenario, {});
     const QJsonObject o = normalizeScenario(QJsonObject::fromVariantMap(scenario));
     const QString n = o.value("name").toString();
     if (n.isEmpty())
-        return fail("scenario name is empty");
+        return fail(Kind::Scenario, "scenario name is empty");
     if (isBuiltinScenario(n))
-        return fail(QStringLiteral("'%1' is a built-in scenario; choose another name").arg(n));
-    if (!writeJson(fileFor("scenarios", n), o))
+        return fail(Kind::Scenario, QStringLiteral("'%1' is a built-in scenario; choose another name").arg(n));
+    if (!writeJson(Kind::Scenario, fileFor("scenarios", n), o))
         return false;
     load();
     return true;
@@ -251,27 +279,29 @@ bool PresetStore::saveScenario(const QVariantMap &scenario)
 
 bool PresetStore::deleteScenario(const QString &name)
 {
+    setError(Kind::Scenario, {});
     if (isBuiltinScenario(name))
-        return fail("built-in scenarios cannot be deleted");
+        return fail(Kind::Scenario, "built-in scenarios cannot be deleted");
     if (!QFile::remove(fileFor("scenarios", name)))
-        return fail(QStringLiteral("cannot delete scenario '%1'").arg(name));
+        return fail(Kind::Scenario, QStringLiteral("cannot delete scenario '%1'").arg(name));
     load();
     return true;
 }
 
 QString PresetStore::importScenario(const QUrl &file)
 {
+    setError(Kind::Scenario, {});
     QString err;
     const QJsonDocument d = readJsonFile(localPath(file), &err);
     if (!d.isObject() || d.object().value("name").toString().trimmed().isEmpty()) {
-        fail(QStringLiteral("not a scenario file: %1").arg(err.isEmpty() ? "missing name" : err));
+        fail(Kind::Scenario, QStringLiteral("not a scenario file: %1").arg(err.isEmpty() ? "missing name" : err));
         return {};
     }
     QJsonObject o = normalizeScenario(d.object());
     if (isBuiltinScenario(o.value("name").toString()))
         o["name"] = o.value("name").toString() + " (imported)";
     const QString name = o.value("name").toString();
-    if (!writeJson(fileFor("scenarios", name), o))
+    if (!writeJson(Kind::Scenario, fileFor("scenarios", name), o))
         return {};
     load();
     return name;
@@ -279,9 +309,10 @@ QString PresetStore::importScenario(const QUrl &file)
 
 bool PresetStore::exportScenario(const QString &name, const QUrl &file)
 {
+    setError(Kind::Scenario, {});
     QVariantMap m = scenario(name);
     if (m.isEmpty())
-        return fail(QStringLiteral("unknown scenario '%1'").arg(name));
+        return fail(Kind::Scenario, QStringLiteral("unknown scenario '%1'").arg(name));
     m.remove("builtin");
-    return writeJson(localPath(file), QJsonObject::fromVariantMap(m));
+    return writeJson(Kind::Scenario, localPath(file), QJsonObject::fromVariantMap(m));
 }

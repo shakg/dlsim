@@ -236,6 +236,16 @@ TrafficClass TrafficClass::fromJson(const QJsonObject &o)
     return c;
 }
 
+TrafficClass TrafficClass::withField(const QString &key, const QJsonValue &value) const
+{
+    QJsonObject o = toJson();
+    o.insert(key, value);
+    TrafficClass c = fromJson(o);
+    if (c.proto != Proto::Tcp && c.proto != Proto::Udp)
+        c.port = 0;
+    return c;
+}
+
 QStringList TrafficClass::validate() const
 {
     QStringList e;

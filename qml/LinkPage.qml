@@ -8,6 +8,42 @@ Item {
     id: root
     property string selectedPreset: Presets.presetNames.length > 0 ? Presets.presetNames[0] : ""
     readonly property var presetData: { Presets.presetNames; return Presets.preset(selectedPreset) }
+    readonly property bool hasSelection: Presets.presetNames.indexOf(selectedPreset) >= 0
+
+    // The selected name can disappear (deleted here, or its file removed): fall back to the first one.
+    Connections {
+        target: Presets
+        function onPresetsChanged() {
+            if (!root.hasSelection)
+                root.selectedPreset = Presets.presetNames.length > 0 ? Presets.presetNames[0] : ""
+        }
+    }
+
+    function deleteSelected() {
+        const name = root.selectedPreset
+        root.ApplicationWindow.window.askConfirm("Delete preset", "Delete the preset '" + name + "'? This cannot be undone.",
+                                                 "Delete", () => {
+            const i = Presets.presetNames.indexOf(name)
+            if (!Presets.deletePreset(name))
+                return
+            // Select the item that took its place, or the new last one.
+            const names = Presets.presetNames
+            if (names.length > 0)
+                root.selectedPreset = names[Math.min(i, names.length - 1)]
+        })
+    }
+
+    function savePreset(name, description) {
+        const doSave = () => {
+            if (Presets.savePreset(name, description, Link.uplink, Link.downlink))
+                root.selectedPreset = name.trim()
+        }
+        if (Presets.userPresetExists(name))
+            root.ApplicationWindow.window.askConfirm("Replace preset", "A preset named '" + name.trim()
+                                                     + "' already exists. Replace it?", "Replace", doSave)
+        else
+            doSave()
+    }
 
     RowLayout {
         anchors.fill: parent
@@ -41,6 +77,7 @@ Item {
                         text: "Load"
                         highlighted: true
                         Layout.fillWidth: true
+                        enabled: root.hasSelection
                         onClicked: Link.applyPreset(root.presetData)
                         ToolTip.visible: hovered
                         ToolTip.text: Link.active && Link.autoApply ? "Load and apply now" : "Load into the editors"
@@ -50,8 +87,8 @@ Item {
                 RowLayout {
                     Button {
                         text: "Delete"
-                        enabled: !root.presetData.builtin
-                        onClicked: Presets.deletePreset(root.selectedPreset)
+                        enabled: root.hasSelection && !root.presetData.builtin
+                        onClicked: root.deleteSelected()
                     }
                     Button {
                         text: "Import…"
@@ -62,16 +99,15 @@ Item {
                     }
                     Button {
                         text: "Export…"
+                        enabled: root.hasSelection
                         onClicked: root.ApplicationWindow.window.askSave("Export preset", ["Preset (*.json)"],
                                        (url) => Presets.exportPreset(root.selectedPreset, url))
                     }
                 }
-                Label {
+                ErrorNote {
                     Layout.fillWidth: true
-                    wrapMode: Text.WordWrap
-                    visible: Presets.lastError.length > 0
-                    color: Theme.danger
-                    text: Presets.lastError
+                    text: Presets.presetError
+                    onDismissed: Presets.clearPresetError()
                 }
             }
 
@@ -172,18 +208,26 @@ Item {
         width: 420
         standardButtons: Dialog.Save | Dialog.Cancel
         onOpened: {
-            nameField.text = Link.activePreset.replace(/\*$/, "")
-            if (Presets.isBuiltinPreset(nameField.text)) nameField.text += " (copy)"
+            const base = Link.activePreset.replace(/\*$/, "")
+            descField.text = Presets.preset(base).description || ""
+            nameField.text = Presets.isBuiltinPreset(base) ? base + " (copy)" : base
             nameField.forceActiveFocus()
         }
-        onAccepted: {
-            if (Presets.savePreset(nameField.text, descField.text, Link.uplink, Link.downlink))
-                root.selectedPreset = nameField.text.trim()
-        }
+        onAccepted: root.savePreset(nameField.text, descField.text)
         ColumnLayout {
             anchors.fill: parent
             Label { text: "Name" }
-            TextField { id: nameField; Layout.fillWidth: true; selectByMouse: true }
+            TextField {
+                id: nameField
+                Layout.fillWidth: true
+                selectByMouse: true
+                // Typing the name of an existing user preset shows its description.
+                onTextEdited: {
+                    const p = Presets.preset(text.trim())
+                    if (p.name !== undefined && !p.builtin)
+                        descField.text = p.description || ""
+                }
+            }
             Label { text: "Description" }
             TextField { id: descField; Layout.fillWidth: true; selectByMouse: true }
             Label {

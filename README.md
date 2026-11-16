@@ -80,7 +80,8 @@ ctest --test-dir build --output-on-failure      # unit tests, no root needed
 
 The unit tests cover `TcCommandBuilder` (every netem option combination,
 plans for both modes, filters, the minimal diff, cut, teardown and leftover
-cleanup) and the `tc -j` / `ss` parsers.
+cleanup), the `tc -j` / `ss` parsers, traffic class editing and the preset
+store's error reporting.
 
 Install system-wide:
 

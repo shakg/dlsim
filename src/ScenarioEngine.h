@@ -27,6 +27,10 @@ class ScenarioEngine : public QObject
     Q_PROPERTY(double stepElapsed READ stepElapsed NOTIFY progressChanged)
     Q_PROPERTY(double totalElapsed READ totalElapsed NOTIFY progressChanged)
     Q_PROPERTY(double totalDuration READ totalDuration NOTIFY stepsChanged)
+    // Edited since the last load, clear or markSaved.
+    Q_PROPERTY(bool modified READ modified NOTIFY modifiedChanged)
+    // Name the timeline was loaded from or last saved as; empty for a new one.
+    Q_PROPERTY(QString savedName READ savedName NOTIFY modifiedChanged)
     Q_PROPERTY(int loopCount READ loopCount NOTIFY progressChanged)
     // Random dropouts
     Q_PROPERTY(bool dropoutsEnabled READ dropoutsEnabled WRITE setDropoutsEnabled NOTIFY dropoutsChanged)
@@ -52,6 +56,8 @@ public:
     double totalElapsed() const { return m_totalElapsedMs / 1000.0; }
     double totalDuration() const;
     int loopCount() const { return m_loopCount; }
+    bool modified() const { return m_modified; }
+    QString savedName() const { return m_savedName; }
     void setName(const QString &n);
     void setLoop(bool v);
 
@@ -77,6 +83,7 @@ public:
     Q_INVOKABLE void load(const QVariantMap &scenario);
     Q_INVOKABLE QVariantMap toMap() const;
     Q_INVOKABLE void clear();
+    Q_INVOKABLE void markSaved(); // the current timeline was written under its name
     Q_INVOKABLE void addStep(const QString &type, const QString &preset, double durationS);
     Q_INVOKABLE void removeStep(int index);
     Q_INVOKABLE void moveStep(int index, int delta);
@@ -89,6 +96,7 @@ public:
 
 Q_SIGNALS:
     void stepsChanged();
+    void modifiedChanged();
     void stateChanged();
     void progressChanged();
     void dropoutsChanged();
@@ -114,6 +122,8 @@ private:
     bool presetProfiles(const QString &name, dlsim::Profile *up, dlsim::Profile *down) const;
     double exponential(double mean);
     void updateTimer();
+    void edited(); // emit stepsChanged and set modified
+    void setSaved(const QString &name); // clear modified, remember the file name
 
     LinkController *m_link;
     PresetStore *m_presets;
@@ -127,6 +137,8 @@ private:
     double m_stepElapsedMs = 0;
     double m_totalElapsedMs = 0;
     int m_loopCount = 0;
+    bool m_modified = false;
+    QString m_savedName;
 
     bool m_dropouts = false;
     double m_meanIntervalS = 30;

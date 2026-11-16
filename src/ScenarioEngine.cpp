@@ -43,7 +43,7 @@ void ScenarioEngine::setName(const QString &n)
     if (n == m_name)
         return;
     m_name = n;
-    Q_EMIT stepsChanged();
+    edited();
 }
 
 void ScenarioEngine::setLoop(bool v)
@@ -51,7 +51,7 @@ void ScenarioEngine::setLoop(bool v)
     if (v == m_loop)
         return;
     m_loop = v;
-    Q_EMIT stepsChanged();
+    edited();
 }
 
 // ---------------------------------------------------------------- editing
@@ -63,6 +63,7 @@ void ScenarioEngine::load(const QVariantMap &scenario)
     m_loop = scenario.value("loop").toBool();
     m_steps = scenario.value("steps").toList();
     Q_EMIT stepsChanged();
+    setSaved(m_name);
 }
 
 QVariantMap ScenarioEngine::toMap() const
@@ -76,12 +77,36 @@ void ScenarioEngine::clear()
     m_steps.clear();
     m_name = QStringLiteral("Untitled");
     Q_EMIT stepsChanged();
+    setSaved(QString());
+}
+
+void ScenarioEngine::markSaved()
+{
+    setSaved(m_name);
+}
+
+void ScenarioEngine::setSaved(const QString &name)
+{
+    if (!m_modified && m_savedName == name)
+        return;
+    m_modified = false;
+    m_savedName = name;
+    Q_EMIT modifiedChanged();
+}
+
+void ScenarioEngine::edited()
+{
+    Q_EMIT stepsChanged();
+    if (m_modified)
+        return;
+    m_modified = true;
+    Q_EMIT modifiedChanged();
 }
 
 void ScenarioEngine::addStep(const QString &type, const QString &preset, double durationS)
 {
     m_steps << QVariantMap{{"type", type}, {"preset", preset}, {"durationS", std::max(0.1, durationS)}};
-    Q_EMIT stepsChanged();
+    edited();
 }
 
 void ScenarioEngine::removeStep(int index)
@@ -91,7 +116,7 @@ void ScenarioEngine::removeStep(int index)
     if (m_state != State::Stopped)
         stop();
     m_steps.removeAt(index);
-    Q_EMIT stepsChanged();
+    edited();
 }
 
 void ScenarioEngine::moveStep(int index, int delta)
@@ -102,7 +127,7 @@ void ScenarioEngine::moveStep(int index, int delta)
     if (m_state != State::Stopped)
         stop();
     m_steps.move(index, to);
-    Q_EMIT stepsChanged();
+    edited();
 }
 
 void ScenarioEngine::setStepField(int index, const QString &key, const QVariant &value)
@@ -110,12 +135,12 @@ void ScenarioEngine::setStepField(int index, const QString &key, const QVariant 
     if (index < 0 || index >= m_steps.size())
         return;
     QVariantMap s = m_steps[index].toMap();
-    if (key == "durationS")
-        s[key] = std::clamp(value.toDouble(), 0.1, 86400.0);
-    else
-        s[key] = value;
+    const QVariant v = key == "durationS" ? QVariant(std::clamp(value.toDouble(), 0.1, 86400.0)) : value;
+    if (s.value(key) == v)
+        return;
+    s[key] = v;
     m_steps[index] = s;
-    Q_EMIT stepsChanged();
+    edited();
 }
 
 // ---------------------------------------------------------------- transport

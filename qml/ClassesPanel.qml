@@ -72,14 +72,25 @@ Section {
                         validator: RegularExpressionValidator { regularExpression: /[0-9.]{0,15}/ }
                         onEditingFinished: Link.setClassField(row.index, "ip", text)
                     }
-                    TextField {
+                    // Wrapper so the tooltip still shows while the field is disabled.
+                    Item {
+                        readonly property bool hasPorts: row.modelData.proto === "tcp" || row.modelData.proto === "udp"
                         Layout.preferredWidth: 58
-                        text: row.modelData.port > 0 ? row.modelData.port : ""
-                        placeholderText: "port"
-                        enabled: row.modelData.proto === "tcp" || row.modelData.proto === "udp"
-                        selectByMouse: true
-                        validator: IntValidator { bottom: 0; top: 65535 }
-                        onEditingFinished: Link.setClassField(row.index, "port", Number(text) || 0)
+                        implicitHeight: portField.implicitHeight
+                        TextField {
+                            id: portField
+                            anchors.fill: parent
+                            text: parent.hasPorts && row.modelData.port > 0 ? row.modelData.port : ""
+                            placeholderText: parent.hasPorts ? "port" : "—"
+                            enabled: parent.hasPorts
+                            selectByMouse: true
+                            validator: IntValidator { bottom: 0; top: 65535 }
+                            onEditingFinished: Link.setClassField(row.index, "port", Number(text) || 0)
+                        }
+                        HoverHandler { id: portHover }
+                        ToolTip.visible: !hasPorts && portHover.hovered
+                        ToolTip.text: "A port needs protocol TCP or UDP"
+                        ToolTip.delay: 300
                     }
                 }
                 RowLayout {

@@ -8,7 +8,57 @@ Item {
     id: root
     property string selectedScenario: Presets.scenarioNames.length > 0 ? Presets.scenarioNames[0] : ""
 
+    readonly property bool hasSelection: Presets.scenarioNames.indexOf(selectedScenario) >= 0
+
     Component.onCompleted: if (Scenario.steps.length === 0 && selectedScenario) Scenario.load(Presets.scenario(selectedScenario))
+
+    // The selected name can disappear (deleted here, or its file removed): fall back to the first one.
+    Connections {
+        target: Presets
+        function onScenariosChanged() {
+            if (!root.hasSelection)
+                root.selectedScenario = Presets.scenarioNames.length > 0 ? Presets.scenarioNames[0] : ""
+        }
+    }
+
+    // Run action now, or after asking when the timeline has unsaved edits.
+    function unlessUnsaved(action) {
+        if (!Scenario.modified) {
+            action()
+            return
+        }
+        root.ApplicationWindow.window.askConfirm("Discard changes", "The scenario '" + Scenario.name
+                                                 + "' has unsaved changes. Discard them?", "Discard", action)
+    }
+
+    function saveCurrent() {
+        const name = Scenario.name.trim()
+        const doSave = () => {
+            if (Presets.saveScenario(Scenario.toMap())) {
+                Scenario.markSaved()
+                root.selectedScenario = name
+            }
+        }
+        // Saving over the file this timeline came from is a normal save; over another one, ask.
+        if (Presets.userScenarioExists(name) && name !== Scenario.savedName)
+            root.ApplicationWindow.window.askConfirm("Replace scenario", "A scenario named '" + name
+                                                     + "' already exists. Replace it?", "Replace", doSave)
+        else
+            doSave()
+    }
+
+    function deleteSelected() {
+        const name = root.selectedScenario
+        root.ApplicationWindow.window.askConfirm("Delete scenario", "Delete the scenario '" + name
+                                                 + "'? This cannot be undone.", "Delete", () => {
+            const i = Presets.scenarioNames.indexOf(name)
+            if (!Presets.deleteScenario(name))
+                return
+            const names = Presets.scenarioNames
+            if (names.length > 0)
+                root.selectedScenario = names[Math.min(i, names.length - 1)]
+        })
+    }
 
     function fmt(s) {
         s = Math.max(0, s)
@@ -23,7 +73,7 @@ Item {
         spacing: 8
 
         Section {
-            title: "Scenario timeline"
+            title: "Scenario timeline · " + Scenario.name + (Scenario.modified ? " *" : "")
             Layout.fillWidth: true
             Layout.fillHeight: true
 
@@ -34,36 +84,40 @@ Item {
                     currentIndex: Presets.scenarioNames.indexOf(root.selectedScenario)
                     onActivated: (i) => root.selectedScenario = Presets.scenarioNames[i]
                 }
-                Button { text: "Load"; onClicked: Scenario.load(Presets.scenario(root.selectedScenario)) }
                 Button {
-                    text: "Save"
-                    onClicked: if (Presets.saveScenario(Scenario.toMap())) root.selectedScenario = Scenario.name
+                    text: "Load"
+                    enabled: root.hasSelection
+                    onClicked: {
+                        const name = root.selectedScenario
+                        root.unlessUnsaved(() => Scenario.load(Presets.scenario(name)))
+                    }
                 }
+                Button { text: "Save"; onClicked: root.saveCurrent() }
                 Button {
                     text: "Delete"
-                    enabled: !Presets.isBuiltinScenario(root.selectedScenario)
-                    onClicked: Presets.deleteScenario(root.selectedScenario)
+                    enabled: root.hasSelection && !Presets.isBuiltinScenario(root.selectedScenario)
+                    onClicked: root.deleteSelected()
                 }
                 Button {
                     text: "Import…"
-                    onClicked: root.ApplicationWindow.window.askOpen("Import scenario", ["Scenario (*.json)"], (url) => {
-                        const n = Presets.importScenario(url)
-                        if (n) { root.selectedScenario = n; Scenario.load(Presets.scenario(n)) }
-                    })
+                    onClicked: root.unlessUnsaved(() => root.ApplicationWindow.window.askOpen(
+                        "Import scenario", ["Scenario (*.json)"], (url) => {
+                            const n = Presets.importScenario(url)
+                            if (n) { root.selectedScenario = n; Scenario.load(Presets.scenario(n)) }
+                        }))
                 }
                 Button {
                     text: "Export…"
+                    enabled: root.hasSelection
                     onClicked: root.ApplicationWindow.window.askSave("Export scenario", ["Scenario (*.json)"],
                                    (url) => Presets.exportScenario(root.selectedScenario, url))
                 }
-                Button { text: "New"; onClicked: Scenario.clear() }
+                Button { text: "New"; onClicked: root.unlessUnsaved(() => Scenario.clear()) }
             }
-            Label {
-                visible: Presets.lastError.length > 0
-                text: Presets.lastError
-                color: Theme.danger
+            ErrorNote {
                 Layout.fillWidth: true
-                wrapMode: Text.WordWrap
+                text: Presets.scenarioError
+                onDismissed: Presets.clearScenarioError()
             }
             RowLayout {
                 Label { text: "Name" }
