@@ -196,16 +196,23 @@ Before using bridge mode, stop NetworkManager from managing the two NICs
 
 ## Using it
 
-The window has a header, four tabs, a status bar and a collapsible bottom
+The window has a header, five tabs, a status bar and a collapsible bottom
 panel. It fits 1366×768.
 
-**Header.** Helper status, mode and interfaces, link state and the active
-preset. On the right: **LIVE** (edits apply at once), the one **Start / Stop**
-button for the whole app, a **⋮** menu with **Reset all…** (removes every
-qdisc, filter, IFB and bridge DLSim created, after a confirmation), the
-notification bell, **Timed outage** (cut for N seconds, then restore) and the
-big **CUT LINK / RESTORE** button (100% loss both ways, immediately). RESTORE
-clears every cut source (manual, timed, scenario, dropout).
+**Header.** Helper status, a state badge (Off / Running / Link cut /
+Scenario step N of M / Fading), the interfaces and the active preset. On the
+right: **LIVE** (edits apply at once), the one **Start / Stop** button for
+the whole app, a **⋮** menu with **Reset all…** (removes every qdisc, filter,
+IFB and bridge DLSim created, after a confirmation), the notification bell and
+the big **CUT LINK / RESTORE** button (100% loss both ways, immediately).
+RESTORE clears every cut source (manual, timed, scenario, dropout).
+
+**Home.** The default tab once the link is configured. A diagram
+`Ground ⇄ DLSim ⇄ Vehicle` (or `This PC ⇄ Vehicle` in host mode) with one arrow
+per direction, labelled with the current delay, loss and rate and the live
+throughput and drops; the labels follow fades and scenarios. Below: the
+current condition (**Change…** opens Link), **Timed outage** (cut for N
+seconds, then restore) and the scenario's Play/Pause.
 
 **Setup.** Pick bridge or host mode and the interface(s). Problems are shown
 next to the field that causes them, and Start stays disabled until they are
@@ -257,7 +264,7 @@ or a rebuild), **Full state**
 
 **Keyboard.** Space: CUT / RESTORE (not while typing; Esc leaves a text
 field). Ctrl+Enter: Start, or Apply. Ctrl+P: play/pause the scenario; Ctrl+.:
-stop it. Ctrl+1…4: tabs. F1: the list of shortcuts.
+stop it. Ctrl+1…5: tabs. F1: the list of shortcuts.
 
 Hover a disabled control to see why it is disabled.
 

@@ -37,6 +37,9 @@ set(DLSIM_QML_FILES
     ../qml/ErrorNote.qml
     ../qml/ErrorFrame.qml
     ../qml/EmptyState.qml
+    ../qml/HomePage.qml
+    ../qml/FlowArrow.qml
+    ../qml/StateBadge.qml
     ../qml/StatChart.qml
     ../qml/qmldir
 )

@@ -266,22 +266,16 @@ ApplicationWindow {
                 }
             }
             Rectangle { width: 1; Layout.fillHeight: true; Layout.margins: 8; color: Theme.border }
-            ColumnLayout {
-                spacing: 0
-                Label {
-                    font.bold: true
-                    text: Link.mode === "bridge"
-                          ? "Bridge  " + (Link.groundIface || "?") + " (ground) ⇄ " + (Link.airIface || "?") + " (air)"
-                          : "Host  " + (Link.hostIface || "?")
-                }
-                Label {
-                    color: Link.active ? (Link.cut ? Theme.danger : Theme.ok) : Theme.textDim
-                    text: (Link.active ? (Link.cut ? "LINK CUT · " + Link.cutSources.join(", ") : "Active") : "Inactive")
-                          + " · preset: " + (Link.activePreset || "(custom)")
-                          + (Scenario.state !== "stopped" ? " · scenario " + Scenario.state : "")
-                          + (Scenario.fading ? " · fading" : "")
-                          + (Scenario.dropoutsEnabled ? " · dropouts on" : "")
-                }
+            StateBadge { objectName: "headerStateBadge" }
+            Label {
+                Layout.maximumWidth: 360
+                elide: Text.ElideRight
+                color: Theme.textDim
+                text: (Link.mode === "bridge" ? (Link.groundIface || "?") + " ⇄ " + (Link.airIface || "?")
+                                              : "Host " + (Link.hostIface || "?"))
+                      + " · " + (Link.activePreset || "(custom)")
+                      + (Scenario.dropoutsEnabled ? " · dropouts on" : "")
+                      + (Link.outageRemaining > 0 ? " · outage " + Link.outageRemaining.toFixed(0) + " s" : "")
             }
             Item { Layout.fillWidth: true }
 
@@ -441,16 +435,6 @@ ApplicationWindow {
                 }
             }
 
-            Label { text: "Outage" }
-            SpinBox { id: outageSecs; from: 1; to: 3600; value: 10; editable: true; Layout.preferredWidth: 100 }
-            Label { text: "s"; color: Theme.textDim }
-            Button {
-                property string disabledReason: !Link.active ? "Start the link first" : "An outage is already running"
-                text: Link.outageRemaining > 0 ? "Cut… " + Link.outageRemaining.toFixed(1) + " s" : "Timed outage"
-                enabled: Link.active && Link.outageRemaining <= 0
-                onClicked: Link.timedOutage(outageSecs.value)
-                Layout.preferredWidth: 120
-            }
             Button {
                 id: cutButton
                 property string disabledReason: "Start the link first"
@@ -691,16 +675,19 @@ ApplicationWindow {
                         ToolTip.delay: 600
                         ToolTip.text: "Ctrl+" + (TabBar.index + 1)
                     }
+                    PageTab { text: "Home" }
                     PageTab { text: "Setup" }
                     PageTab { text: "Link" }
                     PageTab { text: "Scenario" }
                     PageTab { text: "Monitor" }
-                    Component.onCompleted: currentIndex = Link.active ? 1 : 0
+                    // Home once the link is configured; Setup until then.
+                    Component.onCompleted: currentIndex = Link.validationErrors.length === 0 ? 0 : 1
                 }
                 StackLayout {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     currentIndex: pages.currentIndex
+                    HomePage { onOpenTab: (i) => pages.currentIndex = i }
                     InterfacesPage { id: setupPage }
                     LinkPage {}
                     ScenarioPage {}

@@ -1,0 +1,225 @@
+// Home: what is happening to the link right now, and the actions used most.
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+import DLSim
+
+Item {
+    id: root
+    signal openTab(int index)
+
+    readonly property bool bridge: Link.mode === "bridge"
+    readonly property bool clean: Link.validationErrors.length === 0
+
+    function ms(v) { return (v >= 100 ? v.toFixed(0) : +v.toFixed(1)) + " ms" }
+    function rate(kbit) {
+        return kbit >= 1000 ? +(kbit / 1000).toFixed(kbit >= 10000 ? 0 : 1) + " Mbit/s" : Math.round(kbit) + " kbit/s"
+    }
+    // "80 ms ±10 · 1% loss · 2 Mbit/s"
+    function describe(p) {
+        const parts = []
+        parts.push(root.ms(p.delayMs || 0) + ((p.jitterMs || 0) > 0 ? " ±" + +(p.jitterMs).toFixed(1) : ""))
+        if (p.lossModel === "gemodel")
+            parts.push((p.geP || 0) > 0 ? "bursty loss" : "no loss")
+        else
+            parts.push((p.lossPct || 0) > 0 ? +(p.lossPct).toFixed(2) + "% loss" : "no loss")
+        parts.push((p.rateKbit || 0) > 0 ? root.rate(p.rateKbit) : "no rate limit")
+        return parts.join(" · ")
+    }
+    function lossy(p) { return p.lossModel === "gemodel" ? (p.geP || 0) > 0 : (p.lossPct || 0) > 0 }
+    function arrowColor(p, base) {
+        if (!Link.active) return Theme.border
+        if (Link.cut) return Theme.danger
+        return root.lossy(p) || (p.delayMs || 0) > 0 || (p.rateKbit || 0) > 0 ? base : Theme.ok
+    }
+    function traffic(s) {
+        return Link.active ? root.rate(s.kbps || 0) + " · " + (s.dropsPerSec || 0).toFixed(1) + " drop/s" : ""
+    }
+
+    component Node: Rectangle {
+        property string title
+        property string subtitle
+        radius: 6
+        color: Theme.panelAlt
+        border.color: Theme.border
+        implicitWidth: 170
+        implicitHeight: 84
+        Column {
+            anchors.centerIn: parent
+            spacing: 4
+            Label { anchors.horizontalCenter: parent.horizontalCenter; text: parent.parent.title; font.bold: true; font.pixelSize: 16 }
+            Label {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: parent.parent.subtitle
+                color: Theme.textDim
+                visible: text.length > 0
+            }
+        }
+    }
+    component Lane: ColumnLayout {
+        property var profile: ({})
+        property var stats: ({})
+        property string name
+        property color base
+        property bool toVehicle: true
+        spacing: 2
+        Label {
+            Layout.alignment: Qt.AlignHCenter
+            text: parent.name + (Link.active ? "" : " (not running)")
+            color: parent.base
+            font.bold: true
+        }
+        FlowArrow {
+            Layout.fillWidth: true
+            pointsRight: parent.toVehicle
+            color: root.arrowColor(parent.profile, parent.base)
+        }
+        Label {
+            Layout.alignment: Qt.AlignHCenter
+            text: Link.cut && Link.active ? "100% loss (cut)" : root.describe(parent.profile)
+            color: Link.cut && Link.active ? Theme.danger : Theme.text
+            font.pixelSize: 14
+        }
+        Label {
+            Layout.alignment: Qt.AlignHCenter
+            visible: text.length > 0
+            text: root.traffic(parent.stats)
+            color: Theme.textDim
+        }
+    }
+
+    ColumnLayout {
+        anchors.fill: parent
+        anchors.margins: 16
+        spacing: 16
+
+        // State and main actions
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 12
+            StateBadge { objectName: "homeStateBadge"; fontSize: 18 }
+            Label {
+                Layout.fillWidth: true
+                elide: Text.ElideRight
+                color: Theme.textDim
+                text: Link.cut && Link.active ? "Cut by: " + Link.cutSources.join(", ")
+                      : !root.clean ? "Setup is incomplete: " + Link.validationErrors[0]
+                      : !Link.active ? "Press Start to impair the link."
+                      : Scenario.fading ? "Changing the link gradually"
+                      : "Preset " + (Link.activePreset || "(custom)")
+            }
+        }
+
+        // Diagram
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 230
+            color: Theme.panel
+            border.color: Theme.border
+            radius: 4
+            RowLayout {
+                anchors.fill: parent
+                anchors.margins: 20
+                spacing: 12
+                Node {
+                    title: root.bridge ? "Ground" : "This PC"
+                    subtitle: root.bridge ? (Link.groundIface || "no NIC chosen") : (Link.hostIface || "no NIC chosen")
+                }
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 18
+                    Lane {
+                        Layout.fillWidth: true
+                        name: "Uplink"
+                        base: Theme.up
+                        toVehicle: true
+                        profile: Link.uplink
+                        stats: Stats.uplink
+                    }
+                    Rectangle {
+                        Layout.alignment: Qt.AlignHCenter
+                        visible: root.bridge
+                        radius: 4
+                        color: Theme.bg
+                        border.color: Theme.accent
+                        implicitWidth: dlsimLabel.implicitWidth + 20
+                        implicitHeight: dlsimLabel.implicitHeight + 8
+                        Label { id: dlsimLabel; anchors.centerIn: parent; text: "DLSim · " + "br-dlsim"; color: Theme.accent }
+                    }
+                    Lane {
+                        Layout.fillWidth: true
+                        name: "Downlink"
+                        base: Theme.down
+                        toVehicle: false
+                        profile: Link.downlink
+                        stats: Stats.downlink
+                    }
+                }
+                Node {
+                    title: "Vehicle"
+                    subtitle: root.bridge ? (Link.airIface || "no NIC chosen") : "via " + (Link.hostIface || "?")
+                }
+            }
+        }
+
+        // Quick actions
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 12
+
+            Section {
+                title: "Condition"
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignTop
+                RowLayout {
+                    Label {
+                        Layout.fillWidth: true
+                        elide: Text.ElideRight
+                        font.pixelSize: 15
+                        text: Link.activePreset || "(custom)"
+                    }
+                    Button { text: "Change…"; onClicked: root.openTab(2) }
+                }
+            }
+
+            Section {
+                title: "Timed outage"
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignTop
+                RowLayout {
+                    SpinBox { id: outageSecs; objectName: "outageSeconds"; from: 1; to: 3600; value: 10; editable: true; Layout.preferredWidth: 110 }
+                    Label { text: "s"; color: Theme.textDim }
+                    Button {
+                        objectName: "timedOutageButton"
+                        Layout.fillWidth: true
+                        text: Link.outageRemaining > 0 ? "Cut… " + Link.outageRemaining.toFixed(1) + " s left" : "Cut for " + outageSecs.value + " s"
+                        enabled: Link.active && Link.outageRemaining <= 0
+                        property string disabledReason: !Link.active ? "Start the link first" : "An outage is already running"
+                        onClicked: Link.timedOutage(outageSecs.value)
+                    }
+                }
+            }
+
+            Section {
+                title: "Scenario"
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignTop
+                RowLayout {
+                    Label {
+                        Layout.fillWidth: true
+                        elide: Text.ElideRight
+                        text: Scenario.name + (Scenario.state === "stopped" ? "" : " · " + Scenario.state)
+                    }
+                    Button {
+                        text: Scenario.state === "playing" ? "Pause" : Scenario.state === "paused" ? "Resume" : "Play"
+                        enabled: Scenario.state !== "stopped" || Scenario.playBlockedReason === ""
+                        property string disabledReason: Scenario.playBlockedReason
+                        onClicked: Scenario.state === "playing" ? Scenario.pause() : Scenario.play()
+                    }
+                    Button { text: "Open…"; onClicked: root.openTab(3) }
+                }
+            }
+        }
+        Item { Layout.fillHeight: true }
+    }
+}

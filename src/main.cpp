@@ -189,7 +189,7 @@ int main(int argc, char *argv[])
         QObject *pages = window->findChild<QObject *>("pages");
         auto shoot = std::make_shared<std::function<void(int)>>();
         *shoot = [=](int page) {
-            if (page >= 4) {
+            if (page >= 5) {
                 QCoreApplication::quit();
                 return;
             }
