@@ -252,6 +252,14 @@ interval and mean length, laid over the current condition). Play, pause, stop
 and loop, with the current step, step time and total time shown. New steps
 use the previous step's preset, else the active one.
 
+The **timeline** shows one block per step, its width proportional to the
+duration (outages red, fades as a gradient, dropouts amber), and under it a
+graph of delay and loss over time computed with the same interpolation the
+fades use. Drag a block to move it, drag its right edge to change the
+duration (1 s steps, Shift for 0.1 s), click it to select its row in the step
+list below. A playhead shows the position and loop count; while paused, click
+the graph to jump there.
+
 **New…** starts from a goal: *Does my app recover after outages?* (outage
 lengths, recovery time), *Fly out to the edge of range and back* (start and
 edge condition, fade and hold time), *Unstable link* (base condition, dropout

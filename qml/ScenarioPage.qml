@@ -183,6 +183,21 @@ Item {
                 Label { text: "Total " + root.fmt(Scenario.totalDuration); color: Theme.textDim }
             }
 
+            Timeline {
+                id: timeline
+                objectName: "timeline"
+                Layout.fillWidth: true
+                visible: Scenario.steps.length > 0
+                onStepClicked: (i) => steps.positionViewAtIndex(i, ListView.Contain)
+            }
+            Label {
+                visible: Scenario.steps.length > 0
+                text: "Steps"
+                color: Theme.textDim
+                font.pixelSize: 11
+                font.capitalization: Font.AllUppercase
+            }
+
             ListView {
                 id: steps
                 Layout.fillWidth: true
@@ -211,7 +226,8 @@ Item {
                     width: steps.width - 10
                     height: missingPreset ? 58 : 36
                     radius: 3
-                    color: current ? "#21406b" : missingPreset ? "#3a2226" : Theme.panelAlt
+                    color: current ? "#21406b" : missingPreset ? "#3a2226"
+                           : index === timeline.selected ? "#2c3a4d" : Theme.panelAlt
                     border.color: modelData.type === "outage" || missingPreset ? Theme.danger
                                   : modelData.type === "dropouts" ? Theme.warn
                                   : modelData.type === "fade" ? "#ce93d8" : Theme.border

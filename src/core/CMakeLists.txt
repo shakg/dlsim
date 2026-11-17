@@ -6,6 +6,7 @@ add_library(dlsim_core STATIC
     SimpleMode.h SimpleMode.cpp
     Dropouts.h Dropouts.cpp
     Templates.h Templates.cpp
+    ScenarioCurve.h ScenarioCurve.cpp
 )
 target_include_directories(dlsim_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(dlsim_core PUBLIC Qt6::Core)

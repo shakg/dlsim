@@ -92,6 +92,10 @@ public:
     Q_INVOKABLE void removeStep(int index);
     Q_INVOKABLE void moveStep(int index, int delta);
     Q_INVOKABLE void setStepField(int index, const QString &key, const QVariant &value);
+    // Timeline graph: [{t, delayUp, delayDown, lossUp, lossDown}] (see dlsim::scenarioCurve).
+    Q_INVOKABLE QVariantList curve() const;
+    // Jump to `seconds` from the start of the timeline. Only while paused.
+    Q_INVOKABLE void seek(double seconds);
 
     // Fade the live link from its current profiles to the named preset.
     Q_INVOKABLE void fadeTo(const QString &preset, double seconds);
@@ -160,6 +164,8 @@ private:
     QList<dlsim::DropoutWindow> m_stepDropouts;
     bool m_inStepDropout = false;
     void updateStepDropout();
+    // Profiles in effect when step `index` starts (the targets of the steps before it).
+    void profilesBefore(int index, dlsim::Profile *up, dlsim::Profile *down) const;
 
     QTimer m_timer;
     QElapsedTimer m_clock;

@@ -1,4 +1,4 @@
-foreach(name tst_tccommandbuilder tst_parsers tst_model tst_errors tst_simple tst_dropouts)
+foreach(name tst_tccommandbuilder tst_parsers tst_model tst_errors tst_simple tst_dropouts tst_curve)
     add_executable(${name} ${name}.cpp)
     target_link_libraries(${name} PRIVATE dlsim_core Qt6::Test)
     add_test(NAME ${name} COMMAND ${name})

@@ -3,6 +3,7 @@
 #include "EventLog.h"
 #include "LinkController.h"
 #include "PresetStore.h"
+#include "ScenarioCurve.h"
 
 #include <QJsonObject>
 
@@ -501,4 +502,63 @@ void ScenarioEngine::updateStepDropout()
         return;
     m_inStepDropout = in;
     m_link->setCutSource("scenario dropout", in);
+}
+
+void ScenarioEngine::profilesBefore(int index, Profile *up, Profile *down) const
+{
+    *up = m_link->profile(Direction::Uplink);
+    *down = m_link->profile(Direction::Downlink);
+    for (int i = 0; i < index && i < m_steps.size(); ++i) {
+        const QVariantMap s = m_steps[i].toMap();
+        const QString type = s.value("type").toString();
+        Profile u, d;
+        if ((type == "preset" || type == "fade") && presetProfiles(s.value("preset").toString(), &u, &d)) {
+            *up = u;
+            *down = d;
+        }
+    }
+}
+
+QVariantList ScenarioEngine::curve() const
+{
+    Profile up, down;
+    profilesBefore(0, &up, &down);
+    const auto lookup = [this](const QString &name, Profile *u, Profile *d) { return presetProfiles(name, u, d); };
+    QVariantList out;
+    for (const dlsim::CurvePoint &p : dlsim::scenarioCurve(QJsonArray::fromVariantList(m_steps), lookup, up, down))
+        out << QVariantMap{{"t", p.t}, {"delayUp", p.delayUpMs}, {"delayDown", p.delayDownMs},
+                           {"lossUp", p.lossUpPct}, {"lossDown", p.lossDownPct}};
+    return out;
+}
+
+void ScenarioEngine::seek(double seconds)
+{
+    if (m_state != State::Paused || m_steps.isEmpty())
+        return;
+    seconds = std::clamp(seconds, 0.0, totalDuration() - 0.05);
+    int index = 0;
+    double start = 0;
+    for (; index < m_steps.size() - 1; ++index) {
+        const double d = m_steps[index].toMap().value("durationS").toDouble();
+        if (seconds < start + d)
+            break;
+        start += d;
+    }
+    const double offset = seconds - start;
+    if (index != m_current) {
+        leaveStep();
+        enterStep(index);
+    }
+    m_stepElapsedMs = offset * 1000.0;
+    m_totalElapsedMs = seconds * 1000.0;
+    if (m_steps[index].toMap().value("type").toString() == "fade" && m_fade.active) {
+        // Start the ramp where the timeline says it starts, not from the live link.
+        profilesBefore(index, &m_fade.fromUp, &m_fade.fromDown);
+        m_fade.elapsedMs = 0;
+        m_fade.sinceUpdateMs = 1e9;
+        advanceFade(m_stepElapsedMs);
+    }
+    updateStepDropout();
+    m_log->log("scenario", QStringLiteral("jumped to %1 s (step %2)").arg(seconds, 0, 'f', 1).arg(index + 1));
+    Q_EMIT progressChanged();
 }
