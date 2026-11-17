@@ -48,12 +48,13 @@ ColumnLayout {
     }
     ParamRow {
         error: root.err("delayCorrPct")
-        label: "Correlation"; suffix: "%"; enabled: root.hasJitter; value: root.profile.delayCorrPct || 0
+        label: "Correlation"; suffix: "%"; enabled: root.hasJitter; disabledReason: "Set a jitter above 0 first"; value: root.profile.delayCorrPct || 0
         tip: "How much each delay value depends on the previous one"
         onEdited: (v) => root.edited("delayCorrPct", v)
     }
     RowLayout {
         enabled: root.hasJitter
+        property string disabledReason: "Set a jitter above 0 first"
         Label { text: "Distribution"; Layout.preferredWidth: 104; color: parent.enabled ? Theme.text : Theme.textDim }
         BoundCombo {
             Layout.fillWidth: true
@@ -123,6 +124,7 @@ ColumnLayout {
         error: root.err("rateKbit")
             Layout.fillWidth: true
             enabled: (root.profile.rateKbit || 0) > 0
+            disabledReason: "Unlimited: untick ∞ to set a rate"
             label: "Rate"; suffix: "kbit"; from: 8; to: 1000000; logScale: true
             value: root.profile.rateKbit || 1000000
             onEdited: (v) => root.edited("rateKbit", Math.round(v))
@@ -143,6 +145,7 @@ ColumnLayout {
         error: root.err("limitPkts")
             Layout.fillWidth: true
             enabled: (root.profile.limitPkts || 0) > 0
+            disabledReason: "Sized automatically: untick auto to set it"
             label: "Queue limit"; suffix: "pkt"; from: 10; to: 100000; logScale: true
             value: (root.profile.limitPkts || 0) > 0 ? root.profile.limitPkts : Link.autoLimit(root.profile)
             tip: "netem queue size in packets. Auto: delay × rate × 1.5 (min 100 when rate-limited, else 1000)"
@@ -172,6 +175,7 @@ ColumnLayout {
     }
     RowLayout {
         enabled: (root.profile.reorderPct || 0) > 0
+        property string disabledReason: "Set Reorder above 0% first"
         ParamRow {
         error: root.err("reorderCorrPct")
             Layout.fillWidth: true

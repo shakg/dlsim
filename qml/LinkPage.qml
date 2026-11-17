@@ -78,8 +78,9 @@ Item {
                         highlighted: true
                         Layout.fillWidth: true
                         enabled: root.hasSelection
+                        property string disabledReason: "Select a preset"
                         onClicked: Link.applyPreset(root.presetData)
-                        ToolTip.visible: hovered
+                        ToolTip.visible: hovered && enabled
                         ToolTip.text: Link.active && Link.autoApply ? "Load and apply now" : "Load into the editors"
                     }
                     Button { text: "Save as…"; Layout.fillWidth: true; onClicked: saveDialog.open() }
@@ -88,6 +89,7 @@ Item {
                     Button {
                         text: "Delete"
                         enabled: root.hasSelection && !root.presetData.builtin
+                        property string disabledReason: root.hasSelection ? "Built-in presets can't be deleted" : "Select a preset"
                         onClicked: root.deleteSelected()
                     }
                     Button {
@@ -100,6 +102,7 @@ Item {
                     Button {
                         text: "Export…"
                         enabled: root.hasSelection
+                        property string disabledReason: "Select a preset"
                         onClicked: root.ApplicationWindow.window.askSave("Export preset", ["Preset (*.json)"],
                                        (url) => Presets.exportPreset(root.selectedPreset, url))
                     }
@@ -144,9 +147,13 @@ Item {
                         highlighted: Link.dirty || !Link.active
                         enabled: Helper.running && !Link.busy && Link.validationErrors.length === 0
                                  && (Link.dirty || !Link.active)
+                        property string disabledReason: !Helper.running ? "The privileged helper is not running (Start helper, at the top)"
+                                                        : Link.busy ? "Busy: waiting for the helper"
+                                                        : Link.validationErrors.length > 0 ? "Fix the errors listed below first"
+                                                        : "No changes to apply"
                         Layout.fillWidth: true
                         onClicked: Link.apply()
-                        ToolTip.visible: hovered
+                        ToolTip.visible: hovered && enabled
                         ToolTip.text: (Link.active ? "Apply the edits" : "Start the link") + "  (Ctrl+Enter)"
                     }
                     BusyIndicator { running: Link.busy; Layout.preferredHeight: 24; Layout.preferredWidth: 24 }

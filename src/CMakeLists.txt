@@ -35,6 +35,7 @@ set(DLSIM_QML_FILES
     ../qml/BoundCombo.qml
     ../qml/ErrorNote.qml
     ../qml/ErrorFrame.qml
+    ../qml/EmptyState.qml
     ../qml/StatChart.qml
     ../qml/qmldir
 )

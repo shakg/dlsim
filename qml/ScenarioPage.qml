@@ -98,6 +98,7 @@ Item {
                 Button {
                     text: "Load"
                     enabled: root.hasSelection
+                    property string disabledReason: "Select a scenario"
                     onClicked: {
                         const name = root.selectedScenario
                         root.unlessUnsaved(() => Scenario.load(Presets.scenario(name)))
@@ -106,7 +107,7 @@ Item {
                 Button {
                     text: "Save"
                     onClicked: root.saveCurrent()
-                    ToolTip.visible: hovered
+                    ToolTip.visible: hovered && enabled
                     ToolTip.text: Presets.isBuiltinScenario(Scenario.name.trim())
                                   ? "Built-in scenarios can't be changed: save a copy" : "Save as '" + Scenario.name + "'"
                 }
@@ -114,6 +115,7 @@ Item {
                 Button {
                     text: "Delete"
                     enabled: root.hasSelection && !Presets.isBuiltinScenario(root.selectedScenario)
+                    property string disabledReason: root.hasSelection ? "Built-in scenarios can't be deleted" : "Select a scenario"
                     onClicked: root.deleteSelected()
                 }
                 Button {
@@ -136,6 +138,7 @@ Item {
                 Button {
                     text: "Export…"
                     enabled: root.hasSelection
+                    property string disabledReason: "Select a scenario"
                     onClicked: root.ApplicationWindow.window.askSave("Export scenario", ["Scenario (*.json)"],
                                    (url) => Presets.exportScenario(root.selectedScenario, url))
                 }
@@ -171,6 +174,15 @@ Item {
                 spacing: 3
                 model: Scenario.steps
                 ScrollBar.vertical: ScrollBar {}
+
+                EmptyState {
+                    anchors.centerIn: parent
+                    width: Math.min(parent.width - 20, 440)
+                    visible: steps.count === 0
+                    text: "This scenario has no steps yet. Start from a template, or add steps below."
+                    actionText: "New from template…"
+                    onAction: templateDialog.open()
+                }
                 delegate: Rectangle {
                     id: stepRow
                     required property var modelData
@@ -243,8 +255,8 @@ Item {
                             text: Scenario.stepElapsed.toFixed(1)
                             color: Theme.accent
                         }
-                        ToolButton { text: "▲"; enabled: stepRow.index > 0; onClicked: Scenario.moveStep(stepRow.index, -1) }
-                        ToolButton { text: "▼"; enabled: stepRow.index < steps.count - 1; onClicked: Scenario.moveStep(stepRow.index, 1) }
+                        ToolButton { text: "▲"; property string disabledReason: "Already first"; enabled: stepRow.index > 0; onClicked: Scenario.moveStep(stepRow.index, -1) }
+                        ToolButton { text: "▼"; property string disabledReason: "Already last"; enabled: stepRow.index < steps.count - 1; onClicked: Scenario.moveStep(stepRow.index, 1) }
                         ToolButton { text: "✕"; onClicked: Scenario.removeStep(stepRow.index) }
                     }
                 }
@@ -279,8 +291,9 @@ Item {
                 Button {
                     text: "Stop"
                     enabled: Scenario.state !== "stopped"
+                    property string disabledReason: "The scenario is not playing"
                     onClicked: Scenario.stop()
-                    ToolTip.visible: hovered
+                    ToolTip.visible: hovered && enabled
                     ToolTip.text: "Stop the scenario  (Ctrl+.)"
                 }
                 Label {
@@ -354,9 +367,9 @@ Item {
                     }
                 }
                 RowLayout {
-                    Button { text: "Fade"; highlighted: true; enabled: fadeTarget.currentIndex >= 0; onClicked: Scenario.fadeTo(fadeTarget.chosen, fadeSeconds.value) }
+                    Button { text: "Fade"; highlighted: true; property string disabledReason: "Choose a preset to fade to"; enabled: fadeTarget.currentIndex >= 0; onClicked: Scenario.fadeTo(fadeTarget.chosen, fadeSeconds.value) }
                     Button { text: "Fade back"; onClicked: Scenario.fadeBack() }
-                    Button { text: "Stop"; enabled: Scenario.fading; onClicked: Scenario.stopFade() }
+                    Button { text: "Stop"; property string disabledReason: "No fade is running"; enabled: Scenario.fading; onClicked: Scenario.stopFade() }
                 }
                 ProgressBar {
                     Layout.fillWidth: true
@@ -440,6 +453,38 @@ Item {
                 wrapMode: Text.WordWrap
                 color: Theme.textDim
                 text: "Saved to " + Presets.configDir + "/scenarios/"
+            }
+        }
+    }
+    // Templates: copies of the built-in scenarios. Goal-based templates (#17) will replace this list.
+    Dialog {
+        id: templateDialog
+        objectName: "templateDialog"
+        title: "New scenario from template"
+        modal: true
+        focus: true
+        parent: Overlay.overlay
+        anchors.centerIn: parent
+        width: 460
+        standardButtons: Dialog.Cancel
+        readonly property var templates: Presets.scenarioNames.filter(n => Presets.isBuiltinScenario(n))
+        function total(sc) { return (sc.steps || []).reduce((t, s) => t + s.durationS, 0) }
+        ColumnLayout {
+            anchors.fill: parent
+            spacing: 6
+            Repeater {
+                model: templateDialog.templates
+                delegate: Button {
+                    required property string modelData
+                    readonly property var sc: Presets.scenario(modelData)
+                    Layout.fillWidth: true
+                    text: modelData + "  ·  " + (sc.steps || []).length + " steps · " + root.fmt(templateDialog.total(sc))
+                    onClicked: {
+                        Scenario.load(Presets.scenario(modelData))
+                        Scenario.name = modelData + " (copy)" // a new, unsaved scenario
+                        templateDialog.close()
+                    }
+                }
             }
         }
     }

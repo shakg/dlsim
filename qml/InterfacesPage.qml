@@ -17,6 +17,7 @@ Item {
     }
 
     readonly property var errs: Link.fieldErrors
+    readonly property string helperReason: "The privileged helper is not running (Start helper, at the top)"
     // First problem with the configuration, shown as the Start button's tooltip.
     readonly property string firstError: Link.validationErrors.length > 0 ? Link.validationErrors[0] : ""
 
@@ -52,12 +53,14 @@ Item {
                 Layout.fillWidth: true
                 RowLayout {
                     RadioButton {
+                        property string disabledReason: "Stop the link to change the mode"
                         text: "Bridge (two NICs, in line)"
                         checked: Link.mode === "bridge"
                         enabled: !Link.active
                         onToggled: if (checked) Link.mode = "bridge"
                     }
                     RadioButton {
+                        property string disabledReason: "Stop the link to change the mode"
                         text: "Host (this PC's NIC)"
                         checked: Link.mode === "host"
                         enabled: !Link.active
@@ -87,6 +90,7 @@ Item {
                     BoundCombo {
                         Layout.fillWidth: true
                         enabled: !Link.active
+                        property string disabledReason: "Stop the link to change interfaces"
                         values: root.usableIfaces
                         current: Link.groundIface
                         displayText: currentIndex < 0 ? (Link.groundIface || "(choose: faces the ground PC)") : currentText
@@ -99,6 +103,7 @@ Item {
                     BoundCombo {
                         Layout.fillWidth: true
                         enabled: !Link.active
+                        property string disabledReason: "Stop the link to change interfaces"
                         values: root.usableIfaces
                         current: Link.airIface
                         displayText: currentIndex < 0 ? (Link.airIface || "(choose: faces the vehicle)") : currentText
@@ -114,6 +119,7 @@ Item {
                     BoundCombo {
                         Layout.fillWidth: true
                         enabled: !Link.active
+                        property string disabledReason: "Stop the link to change interfaces"
                         values: root.usableIfaces
                         current: Link.hostIface
                         displayText: currentIndex < 0 ? (Link.hostIface || "(choose)") : currentText
@@ -144,10 +150,12 @@ Item {
                             text: Link.active ? "Restart" : "Start"
                             highlighted: !Link.active
                             enabled: Helper.running && !Link.busy && root.firstError === ""
+                            property string disabledReason: !Helper.running ? root.helperReason
+                                                            : Link.busy ? "Busy: waiting for the helper" : ""
                             onClicked: root.startChecked()
                         }
                         HoverHandler { id: startHover }
-                        ToolTip.visible: startHover.hovered
+                        ToolTip.visible: startHover.hovered && (startButton.enabled || root.firstError !== "")
                         ToolTip.text: root.firstError !== "" ? "Fix first: " + root.firstError
                                                              : startButton.text + "  (Ctrl+Enter)"
                         ToolTip.delay: 300
@@ -155,13 +163,16 @@ Item {
                     Button {
                         text: "Stop"
                         enabled: Helper.running && (Link.active || Link.bridgeUp) && !Link.busy
+                        property string disabledReason: !Helper.running ? root.helperReason
+                                                        : Link.busy ? "Busy: waiting for the helper" : "The link is not running"
                         onClicked: Link.stop()
                     }
                     Button {
                         text: "Reset all"
                         enabled: Helper.running && !Link.busy
+                        property string disabledReason: !Helper.running ? root.helperReason : "Busy: waiting for the helper"
                         onClicked: Link.reset()
-                        ToolTip.visible: hovered
+                        ToolTip.visible: hovered && enabled
                         ToolTip.text: "Remove every qdisc, filter, IFB and bridge DLSim created"
                     }
                     Item { Layout.fillWidth: true }

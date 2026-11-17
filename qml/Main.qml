@@ -74,8 +74,13 @@ ApplicationWindow {
         return false
     }
     readonly property bool shortcutsOn: !inPopup()
+    // Why Start can't run now; empty when it can.
+    readonly property string startBlockedReason:
+        !Helper.running ? "The privileged helper is not running (Start helper, at the top)"
+        : Link.busy ? "Busy: waiting for the helper"
+        : Link.validationErrors.length > 0 ? "Fix the setup first: " + Link.validationErrors[0] : ""
     function startOrApply() {
-        if (!Helper.running || Link.busy || Link.validationErrors.length > 0)
+        if (startBlockedReason !== "")
             return
         if (Link.active)
             Link.apply()
@@ -271,6 +276,7 @@ ApplicationWindow {
             SpinBox { id: outageSecs; from: 1; to: 3600; value: 10; editable: true; Layout.preferredWidth: 100 }
             Label { text: "s"; color: Theme.textDim }
             Button {
+                property string disabledReason: !Link.active ? "Start the link first" : "An outage is already running"
                 text: Link.outageRemaining > 0 ? "Cut… " + Link.outageRemaining.toFixed(1) + " s" : "Timed outage"
                 enabled: Link.active && Link.outageRemaining <= 0
                 onClicked: Link.timedOutage(outageSecs.value)
@@ -278,6 +284,7 @@ ApplicationWindow {
             }
             Button {
                 id: cutButton
+                property string disabledReason: "Start the link first"
                 Layout.preferredWidth: 170
                 Layout.preferredHeight: 42
                 enabled: Link.active
@@ -298,11 +305,76 @@ ApplicationWindow {
                            : (cutButton.down ? Theme.dangerDark : Theme.danger)
                 }
                 onClicked: Link.setCut(!Link.cut)
-                ToolTip.visible: hovered
+                ToolTip.visible: hovered && enabled
                 ToolTip.text: (Link.cut ? "Restore the link (clears every cut source)" : "100% loss in both directions, now")
                               + "  (Space)"
             }
         }
+    }
+
+    // ---------------------------------------------------------------- disabled-control reasons
+    // A disabled control gets no hover events, so one handler on the window finds
+    // the control under the cursor and shows its `disabledReason` (declared on the
+    // control, e.g. `property string disabledReason: "Start the link first"`).
+    // Topmost visible child of item at p (item coordinates), skipping the popup overlay.
+    function childAtPoint(item, p) {
+        let best = null
+        for (let i = item.children.length - 1; i >= 0; --i) {
+            const c = item.children[i]
+            if (!c.visible || c === Overlay.overlay || (best && c.z <= best.z))
+                continue
+            const q = item.mapToItem(c, p.x, p.y)
+            if (q.x >= 0 && q.y >= 0 && q.x < c.width && q.y < c.height)
+                best = c
+        }
+        return best
+    }
+    function disabledReasonAt(x, y) {
+        // The header lies outside contentItem's bounds, so start there when the point is in it.
+        let item = reasonHover.parent
+        let p = Qt.point(x, y)
+        const h = item.mapToItem(win.header, x, y)
+        if (h.y >= 0 && h.y < win.header.height) {
+            item = win.header
+            p = h
+        }
+        const chain = [item]
+        for (;;) {
+            const c = win.childAtPoint(item, p)
+            if (!c)
+                break
+            p = item.mapToItem(c, p.x, p.y)
+            item = c
+            chain.push(item)
+        }
+        for (let i = chain.length - 1; i >= 0; --i) {
+            const it = chain[i]
+            if (it.disabledReason !== undefined && !it.enabled)
+                return it.disabledReason
+        }
+        return ""
+    }
+    HoverHandler {
+        id: reasonHover
+        parent: win.contentItem.parent // includes the header
+        onPointChanged: {
+            const r = hovered ? win.disabledReasonAt(point.position.x, point.position.y) : ""
+            if (r !== reasonTip.text || !r)
+                reasonTip.close()
+            reasonTip.text = r
+            if (r) {
+                reasonTip.x = point.position.x + 12
+                reasonTip.y = point.position.y + 18
+                reasonTimer.restart()
+            }
+        }
+        onHoveredChanged: if (!hovered) reasonTip.close()
+    }
+    Timer { id: reasonTimer; interval: 400; onTriggered: if (reasonTip.text) reasonTip.open() }
+    ToolTip {
+        id: reasonTip
+        objectName: "disabledReasonTip"
+        parent: win.contentItem.parent
     }
 
     // A click on empty background takes focus out of text fields, so Space works again.
@@ -377,7 +449,7 @@ ApplicationWindow {
                     Layout.fillWidth: true
                     component PageTab: TabButton {
                         id: tab
-                        ToolTip.visible: hovered
+                        ToolTip.visible: hovered && enabled
                         ToolTip.delay: 600
                         ToolTip.text: "Ctrl+" + (TabBar.index + 1)
                     }
@@ -449,7 +521,7 @@ ApplicationWindow {
                     Layout.preferredHeight: 24
                     text: (win.panelOpen ? "▾ " : "▸ ") + "Log && commands"
                     onClicked: win.panelOpen = !win.panelOpen
-                    ToolTip.visible: hovered
+                    ToolTip.visible: hovered && enabled
                     ToolTip.text: win.panelOpen ? "Hide the event log and tc/ip commands"
                                                 : "Show the event log and tc/ip commands"
                 }

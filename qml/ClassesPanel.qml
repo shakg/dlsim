@@ -27,6 +27,17 @@ Section {
         model: Link.classes
         ScrollBar.vertical: ScrollBar {}
 
+        EmptyState {
+            anchors.centerIn: parent
+            width: Math.min(parent.width - 20, 440)
+            visible: list.count === 0
+            text: Link.otherExcluded
+                  ? "No traffic is impaired: there are no classes and other traffic is excluded."
+                  : "All traffic uses the link profile. Add a class to treat some traffic differently, or to exclude it."
+            actionText: "Add traffic"
+            onAction: Link.addClass("", "tcp", "", 0, "link")
+        }
+
         delegate: Rectangle {
             id: row
             required property var modelData
@@ -133,8 +144,8 @@ Section {
                         ErrorFrame { show: row.profileInvalid }
                     }
                     Item { Layout.fillWidth: true }
-                    ToolButton { text: "▲"; enabled: row.index > 0; onClicked: Link.moveClass(row.index, -1) }
-                    ToolButton { text: "▼"; enabled: row.index < list.count - 1; onClicked: Link.moveClass(row.index, 1) }
+                    ToolButton { text: "▲"; property string disabledReason: "Already first"; enabled: row.index > 0; onClicked: Link.moveClass(row.index, -1) }
+                    ToolButton { text: "▼"; property string disabledReason: "Already last"; enabled: row.index < list.count - 1; onClicked: Link.moveClass(row.index, 1) }
                     ToolButton { text: "✕"; onClicked: Link.removeClass(row.index) }
                 }
                 Label {

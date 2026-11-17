@@ -14,6 +14,7 @@ RowLayout {
     property bool logScale: false
     property string tip
     property string error   // validation message; outlines the field in red
+    property string disabledReason // hover text while disabled
     signal edited(real v)
 
     spacing: 6

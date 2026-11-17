@@ -48,15 +48,30 @@ Item {
             }
             Button { text: "Clear"; onClicked: Stats.clear() }
         }
-        Label {
-            visible: !Link.active
-            text: "Statistics appear once the link is active."
-            color: Theme.textDim
+        // Before the first start there is nothing to chart.
+        Rectangle {
+            id: monitorEmpty
+            Layout.fillWidth: true
+            Layout.preferredHeight: 190
+            Layout.minimumHeight: 150
+            visible: !Link.active && Stats.sampleCount === 0
+            color: Theme.panel
+            border.color: Theme.border
+            radius: 4
+            EmptyState {
+                anchors.centerIn: parent
+                text: "Start the link to see throughput, drops and queue backlog."
+                actionText: "Start"
+                actionEnabled: root.ApplicationWindow.window.startBlockedReason === ""
+                disabledReason: root.ApplicationWindow.window.startBlockedReason
+                onAction: root.ApplicationWindow.window.startOrApply()
+            }
         }
 
         RowLayout {
             Layout.fillWidth: true
             Layout.preferredHeight: 190
+            visible: !monitorEmpty.visible
             Layout.minimumHeight: 150
             spacing: 6
             StatChart {
@@ -98,6 +113,7 @@ Item {
                     placeholderText: "IPv4"
                     selectByMouse: true
                     enabled: !Sockets.running
+                    property string disabledReason: "Stop monitoring to change the peer"
                     onEditingFinished: Sockets.peerIp = text
                 }
                 Label { text: ":" }
@@ -106,6 +122,7 @@ Item {
                     text: Sockets.peerPort
                     selectByMouse: true
                     enabled: !Sockets.running
+                    property string disabledReason: "Stop monitoring to change the peer"
                     validator: IntValidator { bottom: 1; top: 65535 }
                     onEditingFinished: Sockets.peerPort = Number(text)
                 }
@@ -113,6 +130,7 @@ Item {
                     text: Sockets.running ? "Stop" : "Start"
                     highlighted: !Sockets.running
                     enabled: Helper.running
+                    property string disabledReason: "The privileged helper is not running (Start helper, at the top)"
                     onClicked: Sockets.running ? Sockets.stop() : Sockets.start()
                 }
                 Button {
