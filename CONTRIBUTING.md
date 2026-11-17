@@ -106,17 +106,17 @@ the AppImage to `dist-out`.
 
 ## CI/CD
 
-GitHub Actions uses `.github/workflows/ci.yml`:
+GitHub Actions uses two workflows:
 
-- Pull requests run the build, unit tests, package builds, package smoke tests
-  and the privileged network-namespace self-test.
-- Pushes to `main` run the same checks and upload `.deb`, AppImage and
-  screenshot artifacts to the workflow run.
-- Tags matching `v*` run all checks, then create a GitHub release with the
-  `.deb` and AppImage attached.
-- `workflow_dispatch` allows a maintainer to run the workflow manually.
+- `.github/workflows/ci.yml` runs for pull requests, pushes to `main` and
+  manual dispatches. It builds, runs unit tests, packages and smoke-tests the
+  `.deb` and AppImage, runs the privileged network-namespace self-test, and
+  uploads workflow artifacts.
+- `.github/workflows/release.yml` runs only when a `v*` tag is pushed. It
+  validates the tag, repeats the release build and tests, generates SHA-256
+  checksums, and creates or updates the GitHub release.
 
-The release job runs only after both the build and self-test jobs pass.
+The release job runs only after the package build and self-test jobs pass.
 
 ## Creating a release
 

@@ -1,6 +1,7 @@
 # DLSim
 
 [![CI](https://github.com/shakg/dlsim/actions/workflows/ci.yml/badge.svg)](https://github.com/shakg/dlsim/actions/workflows/ci.yml)
+[![Release](https://github.com/shakg/dlsim/actions/workflows/release.yml/badge.svg)](https://github.com/shakg/dlsim/actions/workflows/release.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 DLSim is a Linux desktop app for testing software over unreliable radio links.
