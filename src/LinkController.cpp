@@ -1,5 +1,7 @@
 #include "LinkController.h"
 
+#include "SimpleMode.h"
+
 #include "EventLog.h"
 #include "HelperClient.h"
 #include "SystemInfo.h"
@@ -101,6 +103,95 @@ QVariantList LinkController::classes() const
     return out;
 }
 
+QVariantList LinkController::endpoints() const
+{
+    QVariantList out;
+    for (const auto &e : m_edit.endpoints) {
+        int uses = 0;
+        for (const auto &c : m_edit.classes)
+            uses += c.endpoint == e.name;
+        out << QVariantMap{{"name", e.name}, {"ip", e.ip}, {"uses", uses}};
+    }
+    return out;
+}
+
+void LinkController::setGroundName(const QString &n)
+{
+    const QString v = n.trimmed().isEmpty() ? QStringLiteral("Ground") : n.trimmed();
+    if (v == m_groundName)
+        return;
+    m_groundName = v;
+    Q_EMIT namesChanged();
+    m_saveTimer.start();
+}
+
+void LinkController::setVehicleName(const QString &n)
+{
+    const QString v = n.trimmed().isEmpty() ? QStringLiteral("Vehicle") : n.trimmed();
+    if (v == m_vehicleName)
+        return;
+    // The endpoint of the same name follows (classes refer to it).
+    if (m_edit.renameEndpoint(m_vehicleName, v))
+        Q_EMIT configChanged();
+    m_vehicleName = v;
+    Q_EMIT namesChanged();
+    m_saveTimer.start();
+}
+
+void LinkController::clearClasses()
+{
+    if (m_edit.classes.isEmpty())
+        return;
+    m_edit.classes.clear();
+    edited(true);
+}
+
+void LinkController::addClassFor(const QString &name, const QString &proto, const QString &endpoint, int port,
+                                 const QString &mode)
+{
+    const qsizetype before = m_edit.classes.size();
+    addClass(name, proto, m_edit.endpointIp(endpoint), port, mode);
+    if (m_edit.classes.size() > before && !endpoint.isEmpty()) {
+        m_edit.classes.last().endpoint = endpoint;
+        edited(true);
+    }
+}
+
+void LinkController::addEndpoint(const QString &name, const QString &ip)
+{
+    const auto taken = [this](const QString &n) {
+        return std::any_of(m_edit.endpoints.cbegin(), m_edit.endpoints.cend(), [&](const Endpoint &e) { return e.name == n; });
+    };
+    const QString base = name.trimmed().isEmpty() ? QStringLiteral("Endpoint") : name.trimmed();
+    QString n = base;
+    for (int i = 2; taken(n); ++i)
+        n = QStringLiteral("%1 %2").arg(base).arg(i);
+    m_edit.endpoints << Endpoint{n, ip.trimmed()};
+    edited(false);
+}
+
+bool LinkController::renameEndpoint(const QString &from, const QString &to)
+{
+    if (!m_edit.renameEndpoint(from, to))
+        return false;
+    edited(false);
+    return true;
+}
+
+void LinkController::setEndpointIp(const QString &name, const QString &ip)
+{
+    if (m_edit.endpointIp(name) == ip.trimmed())
+        return;
+    m_edit.setEndpointIp(name, ip);
+    edited(true);
+}
+
+void LinkController::removeEndpoint(const QString &name)
+{
+    m_edit.removeEndpoint(name);
+    edited(false);
+}
+
 // ---------------------------------------------------------------- setters
 
 void LinkController::setMode(const QString &m)
@@ -179,6 +270,32 @@ void LinkController::setProfileField(const QString &dir, const QString &key, con
     edited(true);
 }
 
+QString LinkController::summary() const { return dlsim::summarize(m_edit.uplink, m_edit.downlink); }
+
+QVariantMap LinkController::simpleOf(const QString &dir) const
+{
+    return dlsim::toSimple(dir == "downlink" ? m_edit.downlink : m_edit.uplink).toMap();
+}
+
+void LinkController::setSimple(const QString &dir, const QVariantMap &settings)
+{
+    const dlsim::SimpleSettings s = dlsim::SimpleSettings::fromMap(settings);
+    const Profile up = dir == "downlink" ? m_edit.uplink : dlsim::applySimple(m_edit.uplink, s);
+    const Profile down = dir == "uplink" ? m_edit.downlink : dlsim::applySimple(m_edit.downlink, s);
+    if (up == m_edit.uplink && down == m_edit.downlink)
+        return;
+    m_edit.uplink = up;
+    m_edit.downlink = down;
+    if (!m_activePreset.isEmpty() && !m_activePreset.endsWith('*'))
+        m_activePreset += '*';
+    edited(true);
+}
+
+QStringList LinkController::advancedFields(const QString &dir) const
+{
+    return dlsim::advancedOnlyFields(dir == "downlink" ? m_edit.downlink : m_edit.uplink);
+}
+
 void LinkController::setProfiles(const QVariantMap &uplink, const QVariantMap &downlink, const QString &presetName)
 {
     m_edit.uplink = Profile::fromJson(QJsonObject::fromVariantMap(uplink));
@@ -204,6 +321,19 @@ void LinkController::applyProfilesLive(const Profile &up, const Profile &down, c
     Q_EMIT configChanged();
     updatePreview();
     sendApply(QString());
+}
+
+void LinkController::renameActivePreset(const QString &from, const QString &to)
+{
+    const bool modified = m_activePreset.endsWith('*');
+    const QString base = modified ? m_activePreset.chopped(1) : m_activePreset;
+    if (base != from)
+        return;
+    m_activePreset = to + (modified ? "*" : "");
+    if (m_appliedPreset == from)
+        m_appliedPreset = to;
+    Q_EMIT configChanged();
+    m_saveTimer.start();
 }
 
 int LinkController::autoLimit(const QVariantMap &profile) const
@@ -250,9 +380,11 @@ void LinkController::setClassField(int index, const QString &key, const QVariant
 {
     if (index < 0 || index >= m_edit.classes.size())
         return;
-    QJsonObject o = m_edit.classes[index].toJson();
-    o.insert(key, QJsonValue::fromVariant(value));
-    const TrafficClass c = TrafficClass::fromJson(o);
+    TrafficClass c = m_edit.classes[index].withField(key, QJsonValue::fromVariant(value));
+    if (key == "endpoint")
+        c.ip = c.endpoint.isEmpty() ? m_edit.classes[index].ip : m_edit.endpointIp(c.endpoint);
+    else if (key == "ip")
+        c.endpoint.clear(); // a typed IP replaces the endpoint
     if (c == m_edit.classes[index])
         return;
     m_edit.classes[index] = c;
@@ -286,7 +418,7 @@ void LinkController::start()
     const QStringList errs = m_edit.validate(m_sys->interfaceNames());
     if (!errs.isEmpty()) {
         m_log->log("error", QStringLiteral("cannot start: %1").arg(errs.join("; ")));
-        Q_EMIT errorOccurred(errs.join("\n"));
+        Q_EMIT errorOccurred("start", errs.join("\n"));
         return;
     }
     auto applyFirst = [this] { sendApply(QStringLiteral("started (%1 mode)").arg(mode()), true); };
@@ -303,6 +435,7 @@ void LinkController::start()
             markInactive();
             if (!ok) {
                 m_log->log("error", QStringLiteral("reset failed: %1").arg(err));
+                Q_EMIT errorOccurred("apply", err);
                 return;
             }
             start();
@@ -320,7 +453,7 @@ void LinkController::start()
                               Q_EMIT busyChanged();
                               if (!ok) {
                                   m_log->log("error", QStringLiteral("bridge setup failed: %1").arg(err));
-                                  Q_EMIT errorOccurred(err);
+                                  Q_EMIT errorOccurred("bridge", err);
                                   return;
                               }
                               if (!res.value("unchanged").toBool()) {
@@ -338,6 +471,18 @@ void LinkController::start()
     } else {
         applyFirst();
     }
+}
+
+void LinkController::discardChanges()
+{
+    if (!m_applied)
+        return;
+    const bool cut = m_edit.cut;
+    m_edit = *m_applied;
+    m_edit.cut = cut; // the cut state is not an edit
+    m_activePreset = m_appliedPreset;
+    m_log->log("apply", "unapplied changes discarded");
+    edited(false);
 }
 
 void LinkController::apply()
@@ -382,6 +527,7 @@ void LinkController::sendApply(const QString &reason, bool force)
                               const bool wasActive = isActive();
                               m_applied = cfg;
                               m_appliedPlan = B::buildPlan(cfg);
+                              m_appliedPreset = m_activePreset;
                               if (!reason.isEmpty())
                                   m_log->log("apply", QStringLiteral("%1 [%2]: %3")
                                                           .arg(reason, res.value("level").toString(), describe(cfg)));
@@ -389,7 +535,7 @@ void LinkController::sendApply(const QString &reason, bool force)
                                   Q_EMIT appliedChanged();
                           } else {
                               m_log->log("error", err);
-                              Q_EMIT errorOccurred(err);
+                              Q_EMIT errorOccurred("apply", err);
                               // The helper removes the impairment when an apply fails.
                               if (isActive()) {
                                   m_applied.reset();
@@ -416,6 +562,7 @@ void LinkController::stop()
         Q_EMIT busyChanged();
         if (!ok) {
             m_log->log("error", QStringLiteral("%1 failed: %2").arg(op, err));
+            Q_EMIT errorOccurred("apply", err);
             return;
         }
         m_log->log("apply", "impairment removed, link is clean");
@@ -432,6 +579,7 @@ void LinkController::reset()
         Q_EMIT busyChanged();
         if (!ok) {
             m_log->log("error", QStringLiteral("reset failed: %1").arg(err));
+            Q_EMIT errorOccurred("apply", err);
             return;
         }
         m_log->log("apply", "reset: every qdisc, filter, IFB and bridge created by DLSim removed");
@@ -524,6 +672,7 @@ void LinkController::sendCutState()
     m_helper->request(want ? "cut" : "restore", {}, [this, want](bool ok, const QJsonObject &, const QString &err) {
         if (!ok) {
             m_log->log("error", QStringLiteral("%1 failed: %2").arg(want ? "cut" : "restore", err));
+            Q_EMIT errorOccurred("apply", err);
             return;
         }
         if (m_applied) {
@@ -544,7 +693,12 @@ bool LinkController::isDirty() const
 void LinkController::updatePreview()
 {
     const LinkConfig desired = desiredConfig();
-    m_validation = desired.validate(m_sys->interfaceNames());
+    const QList<dlsim::Issue> issues = desired.issues(m_sys->interfaceNames());
+    m_validation = dlsim::issueTexts(issues);
+    m_fieldErrors.clear();
+    for (const auto &i : issues)
+        if (!m_fieldErrors.contains(i.path))
+            m_fieldErrors.insert(i.path, i.message);
     const Plan plan = B::buildPlan(desired);
 
     CommandList full;
@@ -604,12 +758,17 @@ void LinkController::saveSettings()
     s.setValue("link/config", QString::fromUtf8(QJsonDocument(c.toJson()).toJson(QJsonDocument::Compact)));
     s.setValue("link/activePreset", m_activePreset);
     s.setValue("link/autoApply", m_autoApply);
+    s.setValue("names/ground", m_groundName);
+    s.setValue("names/vehicle", m_vehicleName);
 }
 
 void LinkController::loadSettings()
 {
     QSettings s;
     const QJsonDocument d = QJsonDocument::fromJson(s.value("link/config").toString().toUtf8());
+    m_hasSavedConfig = d.isObject();
+    m_groundName = s.value("names/ground", m_groundName).toString();
+    m_vehicleName = s.value("names/vehicle", m_vehicleName).toString();
     if (d.isObject()) {
         m_edit = LinkConfig::fromJson(d.object());
         m_edit.cut = false;

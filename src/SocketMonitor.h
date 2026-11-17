@@ -4,6 +4,7 @@
 #pragma once
 
 #include "Parsers.h"
+#include "SocketHealth.h"
 
 #include <QElapsedTimer>
 #include <QHash>
@@ -37,6 +38,9 @@ public:
     void setPeerIp(const QString &ip);
     void setPeerPort(int port);
 
+    // Called when the link is cut or restored; a restore starts the recovery clock.
+    void setLinkCut(bool cut);
+
     Q_INVOKABLE void start();
     Q_INVOKABLE void stop();
     Q_INVOKABLE void clear();
@@ -48,6 +52,8 @@ Q_SIGNALS:
     void configChanged();
     void runningChanged();
     void updated();
+    void failed(const QString &error); // on the first failure after a success
+    void recovered(const QString &socket, double seconds); // data acknowledged again after a restore
 
 private:
     struct Point {
@@ -69,6 +75,9 @@ private:
     QString m_lastError;
     QHash<QString, QString> m_states; // key -> state
     QHash<QString, int> m_backoff;
+    QHash<QString, dlsim::SocketHealth> m_health;
+    bool m_linkCut = false;
+    double m_restoredAt = -1; // for sockets first seen after the restore
     QString m_trackedKey;
     QList<Point> m_history;                              // tracked socket over time
     QList<QPair<double, dlsim::TcpSocketInfo>> m_allRows; // every socket, every poll, for CSV

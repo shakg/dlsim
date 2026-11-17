@@ -3,6 +3,7 @@
 #include "EventLog.h"
 #include "LinkController.h"
 #include "PresetStore.h"
+#include "ScenarioCurve.h"
 
 #include <QJsonObject>
 
@@ -18,6 +19,22 @@ ScenarioEngine::ScenarioEngine(LinkController *link, PresetStore *presets, Event
     m_timer.setInterval(kTickMs);
     m_timer.setTimerType(Qt::PreciseTimer);
     connect(&m_timer, &QTimer::timeout, this, &ScenarioEngine::tick);
+    connect(this, &ScenarioEngine::stepsChanged, this, &ScenarioEngine::validityChanged);
+    connect(presets, &PresetStore::presetsChanged, this, &ScenarioEngine::validityChanged);
+}
+
+QString ScenarioEngine::playBlockedReason() const
+{
+    if (m_steps.isEmpty())
+        return QStringLiteral("Add a step first");
+    const QStringList missing = m_presets->missingPresets(toMap());
+    if (missing.isEmpty())
+        return {};
+    QStringList quoted;
+    for (const QString &m : missing)
+        quoted << (m.isEmpty() ? QStringLiteral("(none chosen)") : "'" + m + "'");
+    return QStringLiteral("Preset%1 not found: %2. Pick another preset for the red steps.")
+        .arg(missing.size() > 1 ? "s" : "", quoted.join(", "));
 }
 
 QString ScenarioEngine::state() const
@@ -43,7 +60,7 @@ void ScenarioEngine::setName(const QString &n)
     if (n == m_name)
         return;
     m_name = n;
-    Q_EMIT stepsChanged();
+    edited();
 }
 
 void ScenarioEngine::setLoop(bool v)
@@ -51,7 +68,7 @@ void ScenarioEngine::setLoop(bool v)
     if (v == m_loop)
         return;
     m_loop = v;
-    Q_EMIT stepsChanged();
+    edited();
 }
 
 // ---------------------------------------------------------------- editing
@@ -63,6 +80,7 @@ void ScenarioEngine::load(const QVariantMap &scenario)
     m_loop = scenario.value("loop").toBool();
     m_steps = scenario.value("steps").toList();
     Q_EMIT stepsChanged();
+    setSaved(m_name);
 }
 
 QVariantMap ScenarioEngine::toMap() const
@@ -76,12 +94,36 @@ void ScenarioEngine::clear()
     m_steps.clear();
     m_name = QStringLiteral("Untitled");
     Q_EMIT stepsChanged();
+    setSaved(QString());
+}
+
+void ScenarioEngine::markSaved()
+{
+    setSaved(m_name);
+}
+
+void ScenarioEngine::setSaved(const QString &name)
+{
+    if (!m_modified && m_savedName == name)
+        return;
+    m_modified = false;
+    m_savedName = name;
+    Q_EMIT modifiedChanged();
+}
+
+void ScenarioEngine::edited()
+{
+    Q_EMIT stepsChanged();
+    if (m_modified)
+        return;
+    m_modified = true;
+    Q_EMIT modifiedChanged();
 }
 
 void ScenarioEngine::addStep(const QString &type, const QString &preset, double durationS)
 {
     m_steps << QVariantMap{{"type", type}, {"preset", preset}, {"durationS", std::max(0.1, durationS)}};
-    Q_EMIT stepsChanged();
+    edited();
 }
 
 void ScenarioEngine::removeStep(int index)
@@ -91,7 +133,7 @@ void ScenarioEngine::removeStep(int index)
     if (m_state != State::Stopped)
         stop();
     m_steps.removeAt(index);
-    Q_EMIT stepsChanged();
+    edited();
 }
 
 void ScenarioEngine::moveStep(int index, int delta)
@@ -102,7 +144,7 @@ void ScenarioEngine::moveStep(int index, int delta)
     if (m_state != State::Stopped)
         stop();
     m_steps.move(index, to);
-    Q_EMIT stepsChanged();
+    edited();
 }
 
 void ScenarioEngine::setStepField(int index, const QString &key, const QVariant &value)
@@ -110,20 +152,25 @@ void ScenarioEngine::setStepField(int index, const QString &key, const QVariant 
     if (index < 0 || index >= m_steps.size())
         return;
     QVariantMap s = m_steps[index].toMap();
-    if (key == "durationS")
-        s[key] = std::clamp(value.toDouble(), 0.1, 86400.0);
-    else
-        s[key] = value;
+    const QVariant v = key == "durationS" ? QVariant(std::clamp(value.toDouble(), 0.1, 86400.0)) : value;
+    if (s.value(key) == v)
+        return;
+    s[key] = v;
     m_steps[index] = s;
-    Q_EMIT stepsChanged();
+    edited();
 }
 
 // ---------------------------------------------------------------- transport
 
 void ScenarioEngine::play()
 {
-    if (m_steps.isEmpty())
-        return;
+    if (m_state == State::Stopped) {
+        const QString blocked = playBlockedReason();
+        if (!blocked.isEmpty()) {
+            m_log->log("error", QStringLiteral("scenario '%1' not started: %2").arg(m_name, blocked));
+            return;
+        }
+    }
     if (m_state == State::Paused) {
         m_state = State::Playing;
         m_log->log("scenario", QStringLiteral("'%1' resumed").arg(m_name));
@@ -188,6 +235,15 @@ void ScenarioEngine::enterStep(int index)
                                .arg(dur));
     if (type == "outage") {
         m_link->setCutSource("scenario", true);
+    } else if (type == "dropouts") {
+        // The current condition stays; random outages are laid over it.
+        const double seedValue = s.value("seed").toDouble();
+        const quint32 seed = seedValue > 0 ? quint32(seedValue) : quint32(m_rng());
+        m_stepDropouts = dlsim::dropoutSchedule(seed, s.value("meanIntervalS", 30).toDouble(),
+                                                s.value("meanDurationS", 3).toDouble(), dur);
+        m_log->log("scenario", QStringLiteral("step %1: %2 random dropouts planned (seed %3)")
+                                   .arg(index + 1).arg(m_stepDropouts.size()).arg(seed));
+        updateStepDropout();
     } else {
         Profile up, down;
         if (!presetProfiles(preset, &up, &down)) {
@@ -209,6 +265,13 @@ void ScenarioEngine::leaveStep()
     const QString type = m_steps[m_current].toMap().value("type").toString();
     if (type == "outage")
         m_link->setCutSource("scenario", false);
+    if (type == "dropouts") {
+        m_stepDropouts.clear();
+        if (m_inStepDropout) {
+            m_inStepDropout = false;
+            m_link->setCutSource("scenario dropout", false);
+        }
+    }
     if (type == "fade" && m_fade.active) {
         // Land exactly on the target.
         m_link->applyProfilesLive(m_fade.toUp, m_fade.toDown, m_fade.label);
@@ -398,6 +461,7 @@ void ScenarioEngine::tick()
     if (m_state == State::Playing && m_current >= 0) {
         m_stepElapsedMs += dt;
         m_totalElapsedMs += dt;
+        updateStepDropout();
         const double dur = m_steps[m_current].toMap().value("durationS").toDouble() * 1000.0;
         if (m_stepElapsedMs >= dur) {
             leaveStep();
@@ -420,5 +484,81 @@ void ScenarioEngine::tick()
             enterStep(next);
         }
     }
+    Q_EMIT progressChanged();
+}
+
+void ScenarioEngine::updateStepDropout()
+{
+    if (m_stepDropouts.isEmpty() && !m_inStepDropout)
+        return;
+    const double t = m_stepElapsedMs / 1000.0;
+    bool in = false;
+    for (const auto &w : m_stepDropouts)
+        if (t >= w.startS && t < w.endS()) {
+            in = true;
+            break;
+        }
+    if (in == m_inStepDropout)
+        return;
+    m_inStepDropout = in;
+    m_link->setCutSource("scenario dropout", in);
+}
+
+void ScenarioEngine::profilesBefore(int index, Profile *up, Profile *down) const
+{
+    *up = m_link->profile(Direction::Uplink);
+    *down = m_link->profile(Direction::Downlink);
+    for (int i = 0; i < index && i < m_steps.size(); ++i) {
+        const QVariantMap s = m_steps[i].toMap();
+        const QString type = s.value("type").toString();
+        Profile u, d;
+        if ((type == "preset" || type == "fade") && presetProfiles(s.value("preset").toString(), &u, &d)) {
+            *up = u;
+            *down = d;
+        }
+    }
+}
+
+QVariantList ScenarioEngine::curve() const
+{
+    Profile up, down;
+    profilesBefore(0, &up, &down);
+    const auto lookup = [this](const QString &name, Profile *u, Profile *d) { return presetProfiles(name, u, d); };
+    QVariantList out;
+    for (const dlsim::CurvePoint &p : dlsim::scenarioCurve(QJsonArray::fromVariantList(m_steps), lookup, up, down))
+        out << QVariantMap{{"t", p.t}, {"delayUp", p.delayUpMs}, {"delayDown", p.delayDownMs},
+                           {"lossUp", p.lossUpPct}, {"lossDown", p.lossDownPct}};
+    return out;
+}
+
+void ScenarioEngine::seek(double seconds)
+{
+    if (m_state != State::Paused || m_steps.isEmpty())
+        return;
+    seconds = std::clamp(seconds, 0.0, totalDuration() - 0.05);
+    int index = 0;
+    double start = 0;
+    for (; index < m_steps.size() - 1; ++index) {
+        const double d = m_steps[index].toMap().value("durationS").toDouble();
+        if (seconds < start + d)
+            break;
+        start += d;
+    }
+    const double offset = seconds - start;
+    if (index != m_current) {
+        leaveStep();
+        enterStep(index);
+    }
+    m_stepElapsedMs = offset * 1000.0;
+    m_totalElapsedMs = seconds * 1000.0;
+    if (m_steps[index].toMap().value("type").toString() == "fade" && m_fade.active) {
+        // Start the ramp where the timeline says it starts, not from the live link.
+        profilesBefore(index, &m_fade.fromUp, &m_fade.fromDown);
+        m_fade.elapsedMs = 0;
+        m_fade.sinceUpdateMs = 1e9;
+        advanceFade(m_stepElapsedMs);
+    }
+    updateStepDropout();
+    m_log->log("scenario", QStringLiteral("jumped to %1 s (step %2)").arg(seconds, 0, 'f', 1).arg(index + 1));
     Q_EMIT progressChanged();
 }

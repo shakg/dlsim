@@ -1,6 +1,7 @@
 #include "PresetStore.h"
 
 #include "Model.h"
+#include "Templates.h"
 
 #include <QDir>
 #include <QFile>
@@ -66,15 +67,37 @@ void PresetStore::load()
         }
     };
     loadDir("presets", m_userPresets, &PresetStore::normalizePreset);
+    m_templates.clear();
+    for (const auto &v : readJsonFile(":/presets/templates.json").array())
+        m_templates << v.toObject();
+    {
+        QDir d(m_dir + "/templates");
+        for (const QString &f : d.entryList({"*.json"}, QDir::Files, QDir::Name)) {
+            const QJsonObject o = readJsonFile(d.filePath(f)).object();
+            if (!o.value("name").toString().isEmpty())
+                m_templates.insert(m_templates.size() - 1, o); // before "Blank"
+        }
+    }
     loadDir("scenarios", m_userScenarios, &PresetStore::normalizeScenario);
     Q_EMIT presetsChanged();
     Q_EMIT scenariosChanged();
 }
 
-bool PresetStore::fail(const QString &msg)
+void PresetStore::setError(Kind kind, const QString &msg)
 {
-    m_lastError = msg;
-    Q_EMIT lastErrorChanged();
+    QString &e = kind == Kind::Preset ? m_presetError : m_scenarioError;
+    if (e == msg)
+        return;
+    e = msg;
+    if (kind == Kind::Preset)
+        Q_EMIT presetErrorChanged();
+    else
+        Q_EMIT scenarioErrorChanged();
+}
+
+bool PresetStore::fail(Kind kind, const QString &msg)
+{
+    setError(kind, msg);
     return false;
 }
 
@@ -94,13 +117,20 @@ QJsonObject PresetStore::normalizeScenario(const QJsonObject &o)
     for (const auto &v : o.value("steps").toArray()) {
         const QJsonObject s = v.toObject();
         QString type = s.value("type").toString();
-        if (type != "preset" && type != "outage" && type != "fade")
+        if (type != "preset" && type != "outage" && type != "fade" && type != "dropouts")
             continue;
-        steps.append(QJsonObject{
+        QJsonObject step{
             {"type", type},
             {"preset", s.value("preset").toString()},
             {"durationS", std::clamp(s.value("durationS").toDouble(10), 0.1, 86400.0)},
-        });
+        };
+        if (type == "dropouts") {
+            step["meanIntervalS"] = std::clamp(s.value("meanIntervalS").toDouble(30), 0.1, 86400.0);
+            step["meanDurationS"] = std::clamp(s.value("meanDurationS").toDouble(3), 0.1, 86400.0);
+            if (s.value("seed").toDouble() > 0) // fixed seed: the same dropouts on every run
+                step["seed"] = s.value("seed").toDouble();
+        }
+        steps.append(step);
     }
     return QJsonObject{
         {"name", o.value("name").toString().trimmed()},
@@ -116,11 +146,11 @@ QString PresetStore::fileFor(const QString &kind, const QString &name) const
     return QStringLiteral("%1/%2/%3.json").arg(m_dir, kind, safe);
 }
 
-bool PresetStore::writeJson(const QString &path, const QJsonObject &o)
+bool PresetStore::writeJson(Kind kind, const QString &path, const QJsonObject &o)
 {
     QFile f(path);
     if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate))
-        return fail(QStringLiteral("cannot write %1: %2").arg(path, f.errorString()));
+        return fail(kind, QStringLiteral("cannot write %1: %2").arg(path, f.errorString()));
     f.write(QJsonDocument(o).toJson(QJsonDocument::Indented));
     return true;
 }
@@ -153,18 +183,25 @@ QVariantMap PresetStore::preset(const QString &name) const
 
 bool PresetStore::isBuiltinPreset(const QString &name) const { return findByName(m_builtinPresets, name); }
 
+bool PresetStore::userPresetExists(const QString &name) const
+{
+    const QString n = name.trimmed();
+    return !n.isEmpty() && QFile::exists(fileFor("presets", n));
+}
+
 bool PresetStore::savePreset(const QString &name, const QString &description, const QVariantMap &uplink,
                              const QVariantMap &downlink)
 {
+    setError(Kind::Preset, {});
     const QString n = name.trimmed();
     if (n.isEmpty())
-        return fail("preset name is empty");
+        return fail(Kind::Preset, "preset name is empty");
     if (isBuiltinPreset(n))
-        return fail(QStringLiteral("'%1' is a built-in preset; choose another name").arg(n));
+        return fail(Kind::Preset, QStringLiteral("'%1' is a built-in preset; choose another name").arg(n));
     const QJsonObject o = normalizePreset(QJsonObject{
         {"name", n}, {"description", description},
         {"uplink", QJsonObject::fromVariantMap(uplink)}, {"downlink", QJsonObject::fromVariantMap(downlink)}});
-    if (!writeJson(fileFor("presets", n), o))
+    if (!writeJson(Kind::Preset, fileFor("presets", n), o))
         return false;
     load();
     return true;
@@ -172,27 +209,53 @@ bool PresetStore::savePreset(const QString &name, const QString &description, co
 
 bool PresetStore::deletePreset(const QString &name)
 {
+    setError(Kind::Preset, {});
     if (isBuiltinPreset(name))
-        return fail("built-in presets cannot be deleted");
+        return fail(Kind::Preset, "built-in presets cannot be deleted");
     if (!QFile::remove(fileFor("presets", name)))
-        return fail(QStringLiteral("cannot delete preset '%1'").arg(name));
+        return fail(Kind::Preset, QStringLiteral("cannot delete preset '%1'").arg(name));
+    load();
+    return true;
+}
+
+bool PresetStore::renamePreset(const QString &from, const QString &to)
+{
+    setError(Kind::Preset, {});
+    const QString n = to.trimmed();
+    if (n.isEmpty())
+        return fail(Kind::Preset, "preset name is empty");
+    if (n == from)
+        return true;
+    if (isBuiltinPreset(from))
+        return fail(Kind::Preset, "built-in presets cannot be renamed");
+    if (isBuiltinPreset(n) || userPresetExists(n))
+        return fail(Kind::Preset, QStringLiteral("a preset named '%1' already exists").arg(n));
+    QVariantMap m = preset(from);
+    if (m.isEmpty())
+        return fail(Kind::Preset, QStringLiteral("unknown preset '%1'").arg(from));
+    m.remove("builtin");
+    m["name"] = n;
+    if (!writeJson(Kind::Preset, fileFor("presets", n), normalizePreset(QJsonObject::fromVariantMap(m))))
+        return false;
+    QFile::remove(fileFor("presets", from));
     load();
     return true;
 }
 
 QString PresetStore::importPreset(const QUrl &file)
 {
+    setError(Kind::Preset, {});
     QString err;
     const QJsonDocument d = readJsonFile(localPath(file), &err);
     if (!d.isObject() || d.object().value("name").toString().trimmed().isEmpty()) {
-        fail(QStringLiteral("not a preset file: %1").arg(err.isEmpty() ? "missing name" : err));
+        fail(Kind::Preset, QStringLiteral("not a preset file: %1").arg(err.isEmpty() ? "missing name" : err));
         return {};
     }
     QJsonObject o = normalizePreset(d.object());
     if (isBuiltinPreset(o.value("name").toString()))
         o["name"] = o.value("name").toString() + " (imported)";
     const QString name = o.value("name").toString();
-    if (!writeJson(fileFor("presets", name), o))
+    if (!writeJson(Kind::Preset, fileFor("presets", name), o))
         return {};
     load();
     return name;
@@ -200,11 +263,12 @@ QString PresetStore::importPreset(const QUrl &file)
 
 bool PresetStore::exportPreset(const QString &name, const QUrl &file)
 {
+    setError(Kind::Preset, {});
     QVariantMap m = preset(name);
     if (m.isEmpty())
-        return fail(QStringLiteral("unknown preset '%1'").arg(name));
+        return fail(Kind::Preset, QStringLiteral("unknown preset '%1'").arg(name));
     m.remove("builtin");
-    return writeJson(localPath(file), QJsonObject::fromVariantMap(m));
+    return writeJson(Kind::Preset, localPath(file), QJsonObject::fromVariantMap(m));
 }
 
 // ---------------------------------------------------------------- scenarios
@@ -235,15 +299,22 @@ QVariantMap PresetStore::scenario(const QString &name) const
 
 bool PresetStore::isBuiltinScenario(const QString &name) const { return findByName(m_builtinScenarios, name); }
 
+bool PresetStore::userScenarioExists(const QString &name) const
+{
+    const QString n = name.trimmed();
+    return !n.isEmpty() && QFile::exists(fileFor("scenarios", n));
+}
+
 bool PresetStore::saveScenario(const QVariantMap &scenario)
 {
+    setError(Kind::Scenario, {});
     const QJsonObject o = normalizeScenario(QJsonObject::fromVariantMap(scenario));
     const QString n = o.value("name").toString();
     if (n.isEmpty())
-        return fail("scenario name is empty");
+        return fail(Kind::Scenario, "scenario name is empty");
     if (isBuiltinScenario(n))
-        return fail(QStringLiteral("'%1' is a built-in scenario; choose another name").arg(n));
-    if (!writeJson(fileFor("scenarios", n), o))
+        return fail(Kind::Scenario, QStringLiteral("'%1' is a built-in scenario; choose another name").arg(n));
+    if (!writeJson(Kind::Scenario, fileFor("scenarios", n), o))
         return false;
     load();
     return true;
@@ -251,27 +322,29 @@ bool PresetStore::saveScenario(const QVariantMap &scenario)
 
 bool PresetStore::deleteScenario(const QString &name)
 {
+    setError(Kind::Scenario, {});
     if (isBuiltinScenario(name))
-        return fail("built-in scenarios cannot be deleted");
+        return fail(Kind::Scenario, "built-in scenarios cannot be deleted");
     if (!QFile::remove(fileFor("scenarios", name)))
-        return fail(QStringLiteral("cannot delete scenario '%1'").arg(name));
+        return fail(Kind::Scenario, QStringLiteral("cannot delete scenario '%1'").arg(name));
     load();
     return true;
 }
 
 QString PresetStore::importScenario(const QUrl &file)
 {
+    setError(Kind::Scenario, {});
     QString err;
     const QJsonDocument d = readJsonFile(localPath(file), &err);
     if (!d.isObject() || d.object().value("name").toString().trimmed().isEmpty()) {
-        fail(QStringLiteral("not a scenario file: %1").arg(err.isEmpty() ? "missing name" : err));
+        fail(Kind::Scenario, QStringLiteral("not a scenario file: %1").arg(err.isEmpty() ? "missing name" : err));
         return {};
     }
     QJsonObject o = normalizeScenario(d.object());
     if (isBuiltinScenario(o.value("name").toString()))
         o["name"] = o.value("name").toString() + " (imported)";
     const QString name = o.value("name").toString();
-    if (!writeJson(fileFor("scenarios", name), o))
+    if (!writeJson(Kind::Scenario, fileFor("scenarios", name), o))
         return {};
     load();
     return name;
@@ -279,9 +352,90 @@ QString PresetStore::importScenario(const QUrl &file)
 
 bool PresetStore::exportScenario(const QString &name, const QUrl &file)
 {
+    setError(Kind::Scenario, {});
     QVariantMap m = scenario(name);
     if (m.isEmpty())
-        return fail(QStringLiteral("unknown scenario '%1'").arg(name));
+        return fail(Kind::Scenario, QStringLiteral("unknown scenario '%1'").arg(name));
     m.remove("builtin");
-    return writeJson(localPath(file), QJsonObject::fromVariantMap(m));
+    return writeJson(Kind::Scenario, localPath(file), QJsonObject::fromVariantMap(m));
+}
+
+QStringList PresetStore::missingPresets(const QVariantMap &scenario) const
+{
+    QStringList missing;
+    for (const QVariant &v : scenario.value("steps").toList()) {
+        const QVariantMap s = v.toMap();
+        const QString type = s.value("type").toString();
+        if (type != "preset" && type != "fade")
+            continue;
+        const QString p = s.value("preset").toString();
+        if (!missing.contains(p) && preset(p).isEmpty())
+            missing << p;
+    }
+    return missing;
+}
+
+QVariantList PresetStore::templates() const
+{
+    QVariantList out;
+    for (const auto &t : m_templates)
+        out << QVariantMap{{"name", t.value("name").toString()},
+                           {"description", t.value("description").toString()},
+                           {"params", t.value("params").toArray().toVariantList()}};
+    return out;
+}
+
+QVariantMap PresetStore::expandTemplate(int index, const QVariantMap &values) const
+{
+    if (index < 0 || index >= m_templates.size())
+        return {};
+    const QJsonObject e = dlsim::expandTemplate(m_templates[index], values);
+    QVariantList presets;
+    QStringList created;
+    for (const auto &v : e.value("presets").toArray()) {
+        const QJsonObject p = v.toObject();
+        const QString name = p.value("name").toString().trimmed();
+        if (name.isEmpty() || !preset(name).isEmpty())
+            continue; // already there
+        const QVariantMap from = preset(p.value("from").toString());
+        QJsonObject up = QJsonObject::fromVariantMap(from.value("uplink").toMap());
+        QJsonObject down = QJsonObject::fromVariantMap(from.value("downlink").toMap());
+        for (auto [dir, target] : {std::pair{"uplink", &up}, std::pair{"downlink", &down}}) {
+            const QJsonObject o = p.value(dir).toObject();
+            for (auto it = o.begin(); it != o.end(); ++it)
+                target->insert(it.key(), it.value().isString() ? QJsonValue(it.value().toString().toDouble()) : it.value());
+        }
+        presets << normalizePreset(QJsonObject{{"name", name}, {"description", p.value("description")},
+                                               {"uplink", up}, {"downlink", down}}).toVariantMap();
+        created << name;
+    }
+    const QVariantMap sc{{"steps", e.value("steps").toArray().toVariantList()}};
+    QStringList missing;
+    for (const QString &m : missingPresets(sc))
+        if (!created.contains(m))
+            missing << m;
+    return {{"name", e.value("name").toString()},
+            {"loop", e.value("loop").toBool()},
+            {"steps", sc.value("steps")},
+            {"presets", presets},
+            {"totalS", dlsim::totalDurationS(e.value("steps").toArray())},
+            {"missingPresets", missing}};
+}
+
+bool PresetStore::createTemplatePresets(const QVariantMap &expanded)
+{
+    for (const QVariant &v : expanded.value("presets").toList()) {
+        const QVariantMap p = v.toMap();
+        if (!preset(p.value("name").toString()).isEmpty())
+            continue;
+        if (!savePreset(p.value("name").toString(), p.value("description").toString(), p.value("uplink").toMap(),
+                        p.value("downlink").toMap()))
+            return false;
+    }
+    return true;
+}
+
+QVariantList PresetStore::trafficTemplates() const
+{
+    return readJsonFile(":/presets/traffic.json").array().toVariantList();
 }

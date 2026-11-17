@@ -37,6 +37,17 @@ bool parse(const QString &, LossModel *);
 bool parse(const QString &, Proto *);
 bool parse(const QString &, ClassMode *);
 
+// One validation problem. path names the field, e.g. "airIface", "uplink.delayMs",
+// "classes.2.ip", "classes.2.uplink.lossPct" ("classes" / "otherMode" for whole-list
+// problems). message is short, for display next to that field; text is the
+// full sentence for logs and lists.
+struct Issue {
+    QString path;
+    QString message;
+    QString text;
+};
+QStringList issueTexts(const QList<Issue> &issues);
+
 // One netem configuration. Percentages are 0..100.
 struct Profile {
     double delayMs = 0;
@@ -67,6 +78,8 @@ struct Profile {
     QJsonObject toJson() const;
     static Profile fromJson(const QJsonObject &o);
     QStringList validate(const QString &prefix = {}) const;
+    // pathPrefix goes into Issue::path, textPrefix into Issue::text.
+    QList<Issue> issues(const QString &pathPrefix, const QString &textPrefix) const;
     bool hasLoss() const;
 };
 
@@ -78,11 +91,20 @@ Profile interpolate(const Profile &a, const Profile &b, double t);
 // The same profile with 100% random loss: used for CUT LINK.
 Profile cutProfile(const Profile &p);
 
+// A named device on the link, e.g. "Vehicle" = 192.0.2.10. Traffic classes
+// can refer to one by name; changing its IP changes theirs.
+struct Endpoint {
+    QString name;
+    QString ip; // empty = not set yet
+    bool operator==(const Endpoint &) const = default;
+};
+
 struct TrafficClass {
     QString name;
     bool enabled = true;
     Proto proto = Proto::Any;
     QString ip;        // empty = any. Matches either source or destination (endpoint semantics)
+    QString endpoint;  // name of the Endpoint ip comes from; empty = literal ip
     quint16 port = 0;  // 0 = any. Requires tcp or udp
     ClassMode mode = ClassMode::Link;
     Profile uplink;    // used when mode == Custom
@@ -92,6 +114,10 @@ struct TrafficClass {
     QJsonObject toJson() const;
     static TrafficClass fromJson(const QJsonObject &o);
     QStringList validate() const;
+    QList<Issue> issues(int index) const; // paths start with "classes.<index>."
+    // Copy with one JSON field replaced. A protocol without ports (any, icmp)
+    // drops the port, so the result never fails "a port needs tcp or udp".
+    TrafficClass withField(const QString &key, const QJsonValue &value) const;
 };
 
 struct LinkConfig {
@@ -104,12 +130,22 @@ struct LinkConfig {
     QList<TrafficClass> classes;
     ClassMode otherMode = ClassMode::Link; // Link or Excluded
     bool cut = false;
+    QList<Endpoint> endpoints{{QStringLiteral("Vehicle"), {}}};
+
+    // Set an endpoint's IP and the IP of every class that uses it.
+    void setEndpointIp(const QString &name, const QString &ip);
+    // Rename an endpoint and follow it in the classes. False if the new name is taken or empty.
+    bool renameEndpoint(const QString &from, const QString &to);
+    // Remove an endpoint; its classes keep their IP as a literal one.
+    void removeEndpoint(const QString &name);
+    QString endpointIp(const QString &name) const;
 
     bool operator==(const LinkConfig &) const = default;
     QJsonObject toJson() const;
     static LinkConfig fromJson(const QJsonObject &o);
     // knownIfaces: names from `ip -j link`. Empty list skips the existence check.
     QStringList validate(const QStringList &knownIfaces = {}) const;
+    QList<Issue> issues(const QStringList &knownIfaces = {}) const;
 };
 
 bool isValidIfaceName(const QString &name);

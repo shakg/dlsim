@@ -3,14 +3,19 @@
 #include "EventLog.h"
 #include "HelperClient.h"
 #include "LinkController.h"
+#include "Notifications.h"
 #include "PresetStore.h"
+#include "RunRecorder.h"
 #include "ScenarioEngine.h"
 #include "SocketMonitor.h"
 #include "StatsPoller.h"
 #include "SystemInfo.h"
+#include "UiSettings.h"
 
 #include <QApplication>
 #include <QDir>
+#include <QKeyEvent>
+#include <QQuickItem>
 #include <QQuickWindow>
 #include <QTimer>
 #include <QIcon>
@@ -81,6 +86,28 @@ QPalette darkPalette()
     return p;
 }
 
+// Esc in a text field leaves the field (text fields ignore Esc), so window
+// shortcuts like Space = CUT work again. Not inside popups: there Esc closes.
+class EscapeLeavesTextField : public QObject
+{
+public:
+    using QObject::QObject;
+    bool eventFilter(QObject *obj, QEvent *ev) override
+    {
+        if (ev->type() != QEvent::KeyPress || static_cast<QKeyEvent *>(ev)->key() != Qt::Key_Escape)
+            return false;
+        auto *window = qobject_cast<QQuickWindow *>(obj);
+        auto *item = window ? window->activeFocusItem() : nullptr;
+        if (!item || !item->inherits("QQuickTextInput"))
+            return false;
+        for (QQuickItem *p = item; p; p = p->parentItem())
+            if (p->inherits("QQuickOverlay"))
+                return false;
+        item->setFocus(false); // focusing an ancestor would keep the field's focus
+        return true;
+    }
+};
+
 } // namespace
 
 int main(int argc, char *argv[])
@@ -94,6 +121,7 @@ int main(int argc, char *argv[])
     QApplication::setPalette(darkPalette());
     QQuickStyle::setStyle("Fusion");
     installSignalHandlers(app);
+    app.installEventFilter(new EscapeLeavesTextField(&app));
 
     EventLog log;
     HelperClient helper(&log);
@@ -103,6 +131,38 @@ int main(int argc, char *argv[])
     ScenarioEngine scenario(&link, &presets, &log);
     StatsPoller stats(&helper, &link, &log);
     SocketMonitor sockets(&helper, &log);
+    UiSettings uiSettings;
+    Notifications notifications;
+    RunRecorder recorder(&scenario, &link, &stats, &sockets, &log);
+    QObject::connect(&recorder, &RunRecorder::reportReady, &notifications, [&](const QString &name, const QString &html) {
+        notifications.add("info", QStringLiteral("Run report ready: %1").arg(name),
+                          QStringLiteral("Timeline, outages, recovery times and charts in one page."), {},
+                          "open-report", QStringLiteral("Open report"), html);
+    });
+
+    // Failures become notifications with a cause and a fix.
+    QObject::connect(&link, &LinkController::errorOccurred, &notifications,
+                     [&](const QString &context, const QString &msg) { notifications.report(context, msg); });
+    QObject::connect(&helper, &HelperClient::stateChanged, &notifications, [&] {
+        if (helper.state() == HelperClient::Failed)
+            notifications.report("helper", helper.statusText());
+    });
+    QObject::connect(&sockets, &SocketMonitor::failed, &notifications,
+                     [&](const QString &err) { notifications.report("socket", err); });
+    QObject::connect(&link, &LinkController::cutChanged, &sockets, [&] { sockets.setLinkCut(link.isCut()); });
+    // NetworkManager can take a bridge port back; say so once the bridge is up.
+    QObject::connect(&link, &LinkController::appliedChanged, &notifications, [&] {
+        if (!link.bridgeUp())
+            return;
+        for (const QString &nic : {link.groundIface(), link.airIface()})
+            if (sys.managedByNetworkManager(nic))
+                notifications.add("warning",
+                                  QStringLiteral("%1 is managed by NetworkManager and may undo the bridge").arg(nic),
+                                  QStringLiteral("Stop NetworkManager from managing it while you test. "
+                                                 "Undo later with: nmcli device set %1 managed yes").arg(nic),
+                                  {}, "copy-command", QStringLiteral("Copy command"),
+                                  QStringLiteral("nmcli device set %1 managed no").arg(nic));
+    });
 
     qmlRegisterSingletonInstance("DLSim", 1, 0, "Log", &log);
     qmlRegisterSingletonInstance("DLSim", 1, 0, "Helper", &helper);
@@ -112,6 +172,9 @@ int main(int argc, char *argv[])
     qmlRegisterSingletonInstance("DLSim", 1, 0, "Scenario", &scenario);
     qmlRegisterSingletonInstance("DLSim", 1, 0, "Stats", &stats);
     qmlRegisterSingletonInstance("DLSim", 1, 0, "Sockets", &sockets);
+    qmlRegisterSingletonInstance("DLSim", 1, 0, "UiSettings", &uiSettings);
+    qmlRegisterSingletonInstance("DLSim", 1, 0, "Notifications", &notifications);
+    qmlRegisterSingletonInstance("DLSim", 1, 0, "Reports", &recorder);
 
     QObject::connect(&app, &QCoreApplication::aboutToQuit, [&] {
         scenario.stop();
@@ -135,7 +198,7 @@ int main(int argc, char *argv[])
         QObject *pages = window->findChild<QObject *>("pages");
         auto shoot = std::make_shared<std::function<void(int)>>();
         *shoot = [=](int page) {
-            if (page >= 4) {
+            if (page >= 5) {
                 QCoreApplication::quit();
                 return;
             }
@@ -148,7 +211,9 @@ int main(int argc, char *argv[])
         QTimer::singleShot(2500, window, [=] { (*shoot)(0); });
     }
 
-    if (qEnvironmentVariableIntValue("DLSIM_NO_HELPER") != 1)
+    // First run: the setup wizard explains the password prompt and starts the
+    // helper from its Welcome step. Later runs start it right away.
+    if (qEnvironmentVariableIntValue("DLSIM_NO_HELPER") != 1 && link.hasSavedConfig())
         helper.start();
     return app.exec();
 }

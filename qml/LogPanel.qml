@@ -28,8 +28,8 @@ ColumnLayout {
             required property string message
             width: view.width - 12
             spacing: 8
-            Label { text: time; font.family: Theme.mono; color: Theme.textDim; Layout.preferredWidth: 96 }
-            Label { text: category; font.family: Theme.mono; color: Theme.categoryColor(category); Layout.preferredWidth: 70 }
+            Label { text: time; font.family: Theme.mono; color: Theme.textDim; Layout.preferredWidth: Theme.s(96) }
+            Label { text: category; font.family: Theme.mono; color: Theme.categoryColor(category); Layout.preferredWidth: Theme.s(70) }
             Label { text: message; Layout.fillWidth: true; elide: Text.ElideRight; color: category === "error" ? Theme.danger : Theme.text }
         }
     }

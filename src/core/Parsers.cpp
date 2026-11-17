@@ -99,22 +99,31 @@ TcpSocketInfo TcpSocketInfo::fromJson(const QJsonObject &o)
     return s;
 }
 
+// ss prints timers with print_ms_timer(): [Nmin][S(sec|.)][MMMms], e.g. "200ms",
+// "44sec", "1min12sec", and "6.300ms" = 6 s + 300 ms (the dot joins seconds and
+// milliseconds; it is not a decimal point on ms). "1.204sec" is accepted too.
 double parseSsDuration(const QString &s)
 {
-    static const QRegularExpression re(QStringLiteral("^(?:(\\d+)min)?(?:([0-9.]+)(sec|ms))?$"));
-    const auto m = re.match(s.trimmed());
-    if (!m.hasMatch() || s.trimmed().isEmpty())
+    static const QRegularExpression re(
+        QStringLiteral("^(?:(\\d+)min)?(?:(\\d+)\\.(\\d{3})ms|([0-9.]+)sec|(\\d+)ms)?$"));
+    const QString t = s.trimmed();
+    const auto m = re.match(t);
+    if (t.isEmpty() || !m.hasMatch())
         return -1;
     double total = 0;
     if (m.capturedLength(1))
         total += m.captured(1).toDouble() * 60000.0;
-    if (m.capturedLength(2)) {
+    if (m.capturedLength(2))
+        total += m.captured(2).toDouble() * 1000.0 + m.captured(3).toDouble();
+    if (m.capturedLength(4)) {
         bool ok = false;
-        const double v = m.captured(2).toDouble(&ok);
+        const double v = m.captured(4).toDouble(&ok);
         if (!ok)
             return -1;
-        total += m.captured(3) == "sec" ? v * 1000.0 : v;
+        total += v * 1000.0;
     }
+    if (m.capturedLength(5))
+        total += m.captured(5).toDouble();
     return total;
 }
 

@@ -28,8 +28,17 @@ class LinkController : public QObject
     Q_PROPERTY(QVariantMap uplink READ uplink NOTIFY configChanged)
     Q_PROPERTY(QVariantMap downlink READ downlink NOTIFY configChanged)
     Q_PROPERTY(QVariantList classes READ classes NOTIFY configChanged)
+    // [{name, ip, uses}]: named devices traffic classes can refer to.
+    Q_PROPERTY(QVariantList endpoints READ endpoints NOTIFY configChanged)
     Q_PROPERTY(bool otherExcluded READ otherExcluded WRITE setOtherExcluded NOTIFY configChanged)
     Q_PROPERTY(QString activePreset READ activePreset NOTIFY configChanged)
+    // Plain-language result of both profiles, e.g. "≈ 80 ms round trip · ...".
+    Q_PROPERTY(QString summary READ summary NOTIFY configChanged)
+    // What the user calls the two ends; used in labels instead of "ground"/"air".
+    Q_PROPERTY(QString groundName READ groundName WRITE setGroundName NOTIFY namesChanged)
+    Q_PROPERTY(QString vehicleName READ vehicleName WRITE setVehicleName NOTIFY namesChanged)
+    // A configuration was saved by an earlier run (no first-run wizard then).
+    Q_PROPERTY(bool hasSavedConfig READ hasSavedConfig CONSTANT)
     Q_PROPERTY(bool autoApply READ autoApply WRITE setAutoApply NOTIFY autoApplyChanged)
 
     Q_PROPERTY(bool active READ isActive NOTIFY appliedChanged)
@@ -41,6 +50,8 @@ class LinkController : public QObject
 
     Q_PROPERTY(bool dirty READ isDirty NOTIFY previewChanged)
     Q_PROPERTY(QStringList validationErrors READ validationErrors NOTIFY previewChanged)
+    // Field path ("airIface", "classes.2.ip", "uplink.delayMs", ...) -> short message; first issue per field.
+    Q_PROPERTY(QVariantMap fieldErrors READ fieldErrors NOTIFY previewChanged)
     Q_PROPERTY(QString previewLevel READ previewLevel NOTIFY previewChanged)
     Q_PROPERTY(QString previewDiff READ previewDiff NOTIFY previewChanged)
     Q_PROPERTY(QString previewFull READ previewFull NOTIFY previewChanged)
@@ -56,9 +67,18 @@ public:
     QVariantMap uplink() const { return m_edit.uplink.toJson().toVariantMap(); }
     QVariantMap downlink() const { return m_edit.downlink.toJson().toVariantMap(); }
     QVariantList classes() const;
+    QVariantList endpoints() const;
     bool otherExcluded() const { return m_edit.otherMode == dlsim::ClassMode::Excluded; }
     QString activePreset() const { return m_activePreset; }
+    QString summary() const;
     bool autoApply() const { return m_autoApply; }
+    QString groundName() const { return m_groundName; }
+    QString vehicleName() const { return m_vehicleName; }
+    void setGroundName(const QString &n);
+    void setVehicleName(const QString &n);
+    bool hasSavedConfig() const { return m_hasSavedConfig; }
+    Q_INVOKABLE void clearClasses();
+    Q_INVOKABLE void setOtherExcludedValue(bool v) { setOtherExcluded(v); }
 
     void setMode(const QString &m);
     void setGroundIface(const QString &v);
@@ -76,6 +96,7 @@ public:
 
     bool isDirty() const;
     QStringList validationErrors() const { return m_validation; }
+    QVariantMap fieldErrors() const { return m_fieldErrors; }
     QString previewLevel() const { return m_previewLevel; }
     QString previewDiff() const { return m_previewDiff; }
     QString previewFull() const { return m_previewFull; }
@@ -86,8 +107,14 @@ public:
 
     // Profile editing. dir is "uplink" or "downlink"; key is a Profile JSON key.
     Q_INVOKABLE void setProfileField(const QString &dir, const QString &key, const QVariant &value);
+    // Simple mode (see SimpleMode.h). dir: "uplink", "downlink" or "both" (set only).
+    Q_INVOKABLE QVariantMap simpleOf(const QString &dir) const;
+    Q_INVOKABLE void setSimple(const QString &dir, const QVariantMap &settings);
+    Q_INVOKABLE QStringList advancedFields(const QString &dir) const;
     Q_INVOKABLE void setProfiles(const QVariantMap &uplink, const QVariantMap &downlink, const QString &presetName);
     Q_INVOKABLE void applyPreset(const QVariantMap &preset);
+    // Follow a preset rename: the active name changes, the modified mark stays.
+    Q_INVOKABLE void renameActivePreset(const QString &from, const QString &to);
 
     // netem queue limit the builder would pick for this profile when limitPkts is 0.
     Q_INVOKABLE int autoLimit(const QVariantMap &profile) const;
@@ -95,6 +122,13 @@ public:
     // Traffic classes
     Q_INVOKABLE void addClass(const QString &name, const QString &proto, const QString &ip, int port, const QString &mode);
     Q_INVOKABLE void removeClass(int index);
+    // From a traffic template: proto, port and mode from it, IP from the endpoint (empty = any IP).
+    Q_INVOKABLE void addClassFor(const QString &name, const QString &proto, const QString &endpoint, int port,
+                                 const QString &mode);
+    Q_INVOKABLE void addEndpoint(const QString &name, const QString &ip);
+    Q_INVOKABLE bool renameEndpoint(const QString &from, const QString &to);
+    Q_INVOKABLE void setEndpointIp(const QString &name, const QString &ip);
+    Q_INVOKABLE void removeEndpoint(const QString &name);
     Q_INVOKABLE void moveClass(int index, int delta);
     Q_INVOKABLE void setClassField(int index, const QString &key, const QVariant &value);
     Q_INVOKABLE void setClassProfileField(int index, const QString &dir, const QString &key, const QVariant &value);
@@ -102,6 +136,8 @@ public:
     // Lifecycle
     Q_INVOKABLE void start();    // bridge: setup_bridge + apply; host: apply
     Q_INVOKABLE void apply();
+    // Throw away edits made since the last apply (active link only).
+    Q_INVOKABLE void discardChanges();
     Q_INVOKABLE void stop();     // remove impairment (and the bridge)
     Q_INVOKABLE void reset();    // remove everything DLSim created
 
@@ -116,6 +152,7 @@ public:
 
 Q_SIGNALS:
     void configChanged();
+    void namesChanged();
     void autoApplyChanged();
     void appliedChanged();
     void busyChanged();
@@ -123,7 +160,8 @@ Q_SIGNALS:
     void outageChanged();
     void previewChanged();
     void lastExecutedChanged();
-    void errorOccurred(const QString &message);
+    // context: see dlsim::explainError
+    void errorOccurred(const QString &context, const QString &message);
 
 private:
     void edited(bool presetModified = true);
@@ -147,6 +185,10 @@ private:
     bool m_bridgeUp = false;
     QString m_bridgeGround, m_bridgeAir;
     QString m_activePreset;
+    QString m_appliedPreset;
+    QString m_groundName = QStringLiteral("Ground");
+    QString m_vehicleName = QStringLiteral("Vehicle");
+    bool m_hasSavedConfig = false; // m_activePreset at the last successful apply
     bool m_autoApply = true;
 
     bool m_inFlight = false;
@@ -164,5 +206,6 @@ private:
     double m_outageSeconds = 0;
 
     QStringList m_validation;
+    QVariantMap m_fieldErrors;
     QString m_previewLevel, m_previewDiff, m_previewFull, m_lastExecuted;
 };

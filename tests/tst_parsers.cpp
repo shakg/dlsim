@@ -57,7 +57,10 @@ void TestParsers::durations_data()
     QTest::addColumn<QString>("in");
     QTest::addColumn<double>("ms");
     QTest::newRow("ms") << "200ms" << 200.0;
-    QTest::newRow("frac ms") << "4.476ms" << 4.476;
+    QTest::newRow("sec.ms") << "4.476ms" << 4476.0;    // ss: 4 s + 476 ms
+    QTest::newRow("sec.ms 2") << "6.300ms" << 6300.0;
+    QTest::newRow("min sec.ms") << "1min3.250ms" << 63250.0;
+    QTest::newRow("min ms") << "2min250ms" << 120250.0;
     QTest::newRow("sec") << "1.204sec" << 1204.0;
     QTest::newRow("int sec") << "44sec" << 44000.0;
     QTest::newRow("min sec") << "1min12sec" << 72000.0;

@@ -14,7 +14,15 @@ ColumnLayout {
             TabButton { text: "Full state"; width: implicitWidth + 12 }
             TabButton { text: "Executed"; width: implicitWidth + 12 }
         }
-        Item { Layout.fillWidth: true }
+        Label {
+            Layout.fillWidth: true
+            leftPadding: 8
+            elide: Text.ElideRight
+            color: Theme.textDim
+            text: "Next apply: " + Link.previewLevel
+                  + (Link.previewLevel === "change" ? " (tc qdisc change only)"
+                     : Link.previewLevel === "rebuild" ? " (qdiscs and filters rebuilt)" : "")
+        }
         Button {
             text: "Copy"
             onClicked: { area.selectAll(); area.copy(); area.deselect() }
@@ -29,7 +37,7 @@ ColumnLayout {
             selectByMouse: true
             wrapMode: TextEdit.NoWrap
             font.family: Theme.mono
-            font.pixelSize: 11
+            font.pixelSize: Theme.fontSmall
             color: Theme.text
             background: Rectangle { color: Theme.bg }
             text: tabs.currentIndex === 0 ? Link.previewDiff

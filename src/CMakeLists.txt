@@ -10,6 +10,9 @@ qt_add_executable(dlsim
     SocketMonitor.h SocketMonitor.cpp
     StatsPoller.h StatsPoller.cpp
     SystemInfo.h SystemInfo.cpp
+    UiSettings.h
+    Notifications.h Notifications.cpp
+    RunRecorder.h RunRecorder.cpp
 )
 
 target_compile_definitions(dlsim PRIVATE DLSIM_HELPER_INSTALL_PATH="${DLSIM_HELPER_INSTALL_PATH}")
@@ -32,6 +35,16 @@ set(DLSIM_QML_FILES
     ../qml/CommandsPanel.qml
     ../qml/Section.qml
     ../qml/BoundCombo.qml
+    ../qml/ErrorNote.qml
+    ../qml/ErrorFrame.qml
+    ../qml/EmptyState.qml
+    ../qml/HomePage.qml
+    ../qml/FlowArrow.qml
+    ../qml/StateBadge.qml
+    ../qml/PresetCards.qml
+    ../qml/SimpleEditor.qml
+    ../qml/Timeline.qml
+    ../qml/Wizard.qml
     ../qml/StatChart.qml
     ../qml/qmldir
 )
@@ -43,7 +56,7 @@ qt_add_resources(dlsim "qml"
 qt_add_resources(dlsim "presets"
     PREFIX "/presets"
     BASE ../presets
-    FILES ../presets/presets.json ../presets/scenarios.json
+    FILES ../presets/presets.json ../presets/scenarios.json ../presets/templates.json ../presets/traffic.json
 )
 
 install(TARGETS dlsim RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

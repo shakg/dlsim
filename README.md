@@ -80,7 +80,8 @@ ctest --test-dir build --output-on-failure      # unit tests, no root needed
 
 The unit tests cover `TcCommandBuilder` (every netem option combination,
 plans for both modes, filters, the minimal diff, cut, teardown and leftover
-cleanup) and the `tc -j` / `ss` parsers.
+cleanup), the `tc -j` / `ss` parsers, traffic class editing and the preset
+store's error reporting.
 
 Install system-wide:
 
@@ -185,60 +186,156 @@ Environment variables:
 If the helper dies, a red banner shows the reason with a **Start helper**
 button. A new helper removes whatever the old one left behind.
 
+Errors stay on screen until dismissed and say what to do: e.g. a missing
+`netem` module shows the `apt`/`modprobe` command with a **Copy command**
+button, and the raw `tc` output is under **Details**. The bell in the header
+lists every error and warning of the session.
+
 Before using bridge mode, stop NetworkManager from managing the two NICs
 (`nmcli device set enp1s0 managed no`), or it may reconfigure them.
 
 ## Using it
 
-The window has a header, four tabs and a bottom panel. It fits 1366×768.
+**First run.** With no saved configuration a setup wizard opens: Welcome
+(what DLSim does and why it asks for your password; the helper starts only
+when you continue), Where is this PC (between two devices = bridge, or on the
+ground PC = host), Ports (with live link and traffic per port, Identify by
+unplugging, and names for the two ends, e.g. "Ground station" and "Drone",
+used in labels throughout), Traffic (templates; SSH is kept clean and in host
+mode other traffic is left alone by default, with the reason shown), Starting
+condition (preset cards) and Review + Start. Back and Next keep your choices;
+Cancel leaves the app as it was. Run it again from **⋮ → Run setup again…**.
 
-**Header.** Helper status, mode and interfaces, link state and the active
-preset. On the right: **Timed outage** (cut for N seconds, then restore) and
+The window has a header, five tabs, a status bar and a collapsible bottom
+panel. Text follows the desktop font size (at least 13 px) and the zoom;
+sidebars take a share of the window within limits, so the layout fits
+1366×768 and uses the space on 1920×1080 and 2560×1440.
+
+**Header.** Helper status, a state badge (Off / Running / Link cut /
+Scenario step N of M / Fading), the interfaces and the active preset. On the
+right: **LIVE** (edits apply at once), the one **Start / Stop** button for
+the whole app, a **⋮** menu with **Reset all…** (removes every qdisc, filter,
+IFB and bridge DLSim created, after a confirmation), the notification bell and
 the big **CUT LINK / RESTORE** button (100% loss both ways, immediately).
 RESTORE clears every cut source (manual, timed, scenario, dropout).
 
-**Setup.** Pick bridge or host mode and the interface(s). DLSim warns before
-you impair an interface that carries the default route or an SSH session, and
-before enslaving an interface with addresses to the bridge. **Start** creates
-the bridge (bridge mode) and applies the profiles; **Stop** removes them;
-**Reset all** removes every qdisc, filter, IFB and bridge DLSim created. The
-right side holds the **traffic classes**: protocol + IP + port, each using the
+**Home.** The default tab once the link is configured. A diagram
+`Ground ⇄ DLSim ⇄ Vehicle` (or `This PC ⇄ Vehicle` in host mode) with one arrow
+per direction, labelled with the current delay, loss and rate and the live
+throughput and drops; the labels follow fades and scenarios. Below: the
+current condition (**Change…** opens Link), **Timed outage** (cut for N
+seconds, then restore) and the scenario's Play/Pause.
+
+**Setup.** Pick bridge or host mode and the interface(s). The interface list
+shows, per port and refreshed every second without root, whether a cable is
+in (carrier), the speed and the live rx/tx rate; virtual interfaces are hidden
+unless **Show all** is on. **Identify…** next to each NIC asks you to unplug
+the cable going to that side and picks the port that loses its link. Home
+shows each port's cable state under Ground and Vehicle. Problems are shown
+next to the field that causes them, and Start stays disabled until they are
+fixed. DLSim warns before you impair an interface that carries the default
+route or an SSH session, before enslaving an interface with addresses to the
+bridge, and when NetworkManager manages a bridge port. **Start** creates the
+bridge (bridge mode) and applies the profiles; **Stop** removes them. The
+right side holds the **traffic classes**, added with **Add traffic ▾** from templates (MAVLink
+TCP/UDP, RTSP/RTP video, SSH, HTTP, custom; `presets/traffic.json`) that ask
+for the endpoint and fill protocol and port. Each row reads as a sentence
+("Telemetry · TCP to/from Vehicle:4555 · uses link profile"); **Edit** opens
+its fields. **Endpoints** (left) name the devices, e.g. *Vehicle* = 192.0.2.10;
+changing an endpoint's IP changes every class that uses it. A class is
+protocol + IP (or endpoint) + port, each using the
 link profile, a custom profile (own uplink/downlink netem), or excluded. A
 class matches packets *to or from* IP:port, so one class covers both
 directions. First match wins. "Other traffic" uses the link profile or is
 excluded.
 
-**Link.** Uplink and downlink editors: delay, jitter, correlation and
+**Link.** A plain-language summary of the link ("≈ 80 ms round trip · about
+1 in 100 packets lost · max 2 Mbit/s") and two editor modes (the choice is
+remembered). **Simple** (default): latency, variation, packet loss (None /
+Occasional / Bursty fades with amount and burst length) and a bandwidth cap,
+with **Same for both directions** on by default. Bursty loss maps to
+Gilbert-Elliott with `r = 100 / burst`, `1-h = 100%`, `1-k = 0` and `p` chosen
+for the average loss. Fields simple mode can't show are kept and listed.
+**Advanced**: uplink and downlink editors with every netem field: delay, jitter, correlation and
 distribution (uniform, normal, pareto, paretonormal); loss (random with
 correlation, or Gilbert-Elliott `p`, `r`, `1-h`, `1-k`); rate (∞ = unlimited)
 and queue limit (auto = sized from delay × rate); duplicate, reorder (with
-correlation and gap) and corrupt. Presets load, save, delete, import and
-export here. With **Apply changes immediately** on, every edit is sent within
-150 ms; otherwise press **Apply**.
+correlation and gap) and corrupt. Presets are cards on the left: name, description and delay · loss · rate per
+direction. Click a card to apply it. The active card is highlighted; after an
+edit it shows *modified* with **Save as new…** and **Revert**. Each card's …
+menu has Rename, Export and Delete (user presets). With **Apply edits immediately (live)** on, every edit is sent
+within 150 ms; otherwise an **Unapplied changes · Apply · Discard** bar
+appears under the header.
 
-**Scenario.** A timeline of steps: *Profile* (switch to a preset), *Fade to*
-(ramp from the current profiles to a preset over the step's duration) and
-*Outage*. Play, pause, stop and loop, with the current step, step time and
-total time shown. On the right: a manual **Fade** (current → preset over T
-seconds at 1–10 Hz, plus **Fade back**) and **Random dropouts**: outages with
-exponentially distributed gaps and lengths (a Poisson process) around the
-mean interval and mean duration you set.
+**Scenario.** A timeline of steps: *Hold condition* (switch to a preset),
+*Gradually change to* (ramp from the current profiles to a preset over the
+step's duration), *Drop link* (100% loss) and *Random dropouts* (outages with
+exponentially distributed gaps and lengths, a Poisson process, around a mean
+interval and mean length, laid over the current condition). Play, pause, stop
+and loop, with the current step, step time and total time shown. New steps
+use the previous step's preset, else the active one.
+
+The **timeline** shows one block per step, its width proportional to the
+duration (outages red, fades as a gradient, dropouts amber), and under it a
+graph of delay and loss over time computed with the same interpolation the
+fades use. Drag a block to move it, drag its right edge to change the
+duration (1 s steps, Shift for 0.1 s), click it to select its row in the step
+list below. A playhead shows the position and loop count; while paused, click
+the graph to jump there.
+
+**New…** starts from a goal: *Does my app recover after outages?* (outage
+lengths, recovery time), *Fly out to the edge of range and back* (start and
+edge condition, fade and hold time), *Unstable link* (base condition, dropout
+frequency and length, total time), *Congested downlink* (bitrate cap,
+duration) or *Blank*. Each shows its description, step count and total time
+before creating; the result is a normal scenario to edit and save.
+Templates are data: `presets/templates.json`, plus your own in
+`~/.config/dlsim/templates/*.json` (same format: `params`, `steps` with
+`$param` values and `forEach` over a list, optional derived `presets`).
+
+When a scenario finishes or is stopped, DLSim saves a **run report** in
+`~/.config/dlsim/reports/`: scenario, times and setup, the timeline with
+outages marked, each outage's length, dropped packets and the recovery time of
+every tracked TCP socket, and charts of throughput, drops and RTO/backoff, in
+one HTML page with no external assets. **Reports…** lists recent runs to open
+again, save the page, or save the raw data (stats, sockets, log) as a zip of
+CSVs.
+
+The manual **Gradual change** (current → preset over T seconds at 1–10 Hz,
+with **Fade** and **Fade back**) and **Random dropouts** switch are quick actions on Home.
 
 **Monitor.** 1 Hz statistics from `tc -s -j qdisc show` per direction:
 throughput, packets/s, drops/s, backlog, total drops and overlimits, with live
-charts. Below, the **TCP socket monitor**: enter the peer IP and port and press
-Start. It polls `ss -tnoi` for `dst IP dport = :PORT` and `src IP sport = :PORT`
-at 1 Hz and shows state, Recv-Q/Send-Q, rto, rtt, retransmits, backoff and the
+charts. Below, the **TCP socket monitor**: pick the peer from your TCP traffic
+classes (or *Other…* to type IP and port) and press Start. Each connection
+gets a plain status line: *Healthy · RTT 42 ms*, *Stuck · waiting on
+retransmit timer, next try in 12.3 s (backoff 5)*, *Stuck · the peer's receive
+window is zero*, *Possibly half-open · ESTAB, no data acknowledged for 40 s*,
+*Idle*, *Connecting*, *Listening*, and after a RESTORE or outage end
+*Recovered 23.4 s after link was restored* (time from the restore to the
+first data acknowledged after it; also logged). The rules are in
+`src/core/SocketHealth.h`. It polls `ss -tnoi` for `dst IP dport = :PORT` and `src IP sport = :PORT`
+at 1 Hz. **Details** shows the raw state, Recv-Q/Send-Q, rto, rtt, retransmits, backoff and the
 timer (`on` = retransmit, `keepalive`, `persist`) with its countdown. The chart
 plots RTO, backoff and total retransmits of one socket over time. Statistics
 and socket history export to CSV.
 
-**Bottom panel.** *Log*: a timestamped list of every applied change, outage
+**Bottom panel.** Closed by default; open it with **Log & commands** in the
+status bar (a red count shows new errors). Its state and height are
+remembered. *Log*: a timestamped list of every applied change, outage
 start/end, scenario step, socket state or backoff change, and helper message
 (exports to CSV). *Commands*: the exact `tc`/`ip` commands — **Pending** (the
-minimal diff the next apply will run, before you press Apply), **Full state**
+minimal diff the next apply will run, and whether that is a `tc qdisc change`
+or a rebuild), **Full state**
 (everything needed to build the current configuration from scratch) and
 **Executed** (what the helper ran, with exit codes and stderr).
+
+**Keyboard.** Space: CUT / RESTORE (not while typing; Esc leaves a text
+field). Ctrl+Enter: Start, or Apply. Ctrl+P: play/pause the scenario; Ctrl+.:
+stop it. Ctrl+1…5: tabs. Ctrl+= / Ctrl+-: bigger / smaller text (Ctrl+0 resets;
+remembered). F1: the list of shortcuts.
+
+Hover a disabled control to see why it is disabled.
 
 ## Reproducing the TCP telemetry stall
 
@@ -296,14 +393,18 @@ Preset format (missing fields take defaults):
 }
 ```
 
-Scenario format (`type` is `preset`, `fade` or `outage`; `preset` names a
-preset):
+Scenario format. `type` is `preset` (Hold condition), `fade` (Gradually
+change to), `outage` (Drop link) or `dropouts` (Random dropouts); `preset`
+names a preset. A `dropouts` step takes `meanIntervalS` and `meanDurationS`
+(defaults 30 and 3) and an optional `seed`: with a seed the step produces the
+same dropouts on every run.
 
 ```json
 { "name": "My test", "loop": false,
   "steps": [ { "type": "preset", "preset": "Good LOS", "durationS": 20 },
              { "type": "fade", "preset": "Fringe", "durationS": 30 },
-             { "type": "outage", "durationS": 10 } ] }
+             { "type": "outage", "durationS": 10 },
+             { "type": "dropouts", "durationS": 120, "meanIntervalS": 15, "meanDurationS": 2, "seed": 7 } ] }
 ```
 
 ## How it works

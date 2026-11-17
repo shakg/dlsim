@@ -1,0 +1,9 @@
+[
+  { "name": "MAVLink telemetry (TCP)", "label": "Telemetry", "proto": "tcp", "port": 4555, "mode": "link", "needsEndpoint": true },
+  { "name": "MAVLink telemetry (UDP)", "label": "Telemetry", "proto": "udp", "port": 14550, "mode": "link", "needsEndpoint": true },
+  { "name": "RTSP video control (TCP)", "label": "RTSP", "proto": "tcp", "port": 554, "mode": "link", "needsEndpoint": true },
+  { "name": "RTP video (UDP)", "label": "Video", "proto": "udp", "port": 5600, "mode": "link", "needsEndpoint": true },
+  { "name": "SSH (kept clean)", "label": "SSH", "proto": "tcp", "port": 22, "mode": "excluded", "needsEndpoint": false },
+  { "name": "HTTP (TCP)", "label": "HTTP", "proto": "tcp", "port": 80, "mode": "link", "needsEndpoint": true },
+  { "name": "Custom…", "label": "", "proto": "tcp", "port": 0, "mode": "link", "needsEndpoint": false }
+]

@@ -2,6 +2,7 @@
 // Driven by one 100 ms QTimer; fade updates are pushed at fadeRateHz.
 #pragma once
 
+#include "Dropouts.h"
 #include "Model.h"
 
 #include <QElapsedTimer>
@@ -27,7 +28,13 @@ class ScenarioEngine : public QObject
     Q_PROPERTY(double stepElapsed READ stepElapsed NOTIFY progressChanged)
     Q_PROPERTY(double totalElapsed READ totalElapsed NOTIFY progressChanged)
     Q_PROPERTY(double totalDuration READ totalDuration NOTIFY stepsChanged)
+    // Edited since the last load, clear or markSaved.
+    Q_PROPERTY(bool modified READ modified NOTIFY modifiedChanged)
+    // Name the timeline was loaded from or last saved as; empty for a new one.
+    Q_PROPERTY(QString savedName READ savedName NOTIFY modifiedChanged)
     Q_PROPERTY(int loopCount READ loopCount NOTIFY progressChanged)
+    // Why Play is refused (e.g. a step names a missing preset); empty when it can play.
+    Q_PROPERTY(QString playBlockedReason READ playBlockedReason NOTIFY validityChanged)
     // Random dropouts
     Q_PROPERTY(bool dropoutsEnabled READ dropoutsEnabled WRITE setDropoutsEnabled NOTIFY dropoutsChanged)
     Q_PROPERTY(double meanIntervalS READ meanIntervalS WRITE setMeanIntervalS NOTIFY dropoutsChanged)
@@ -52,6 +59,9 @@ public:
     double totalElapsed() const { return m_totalElapsedMs / 1000.0; }
     double totalDuration() const;
     int loopCount() const { return m_loopCount; }
+    bool modified() const { return m_modified; }
+    QString savedName() const { return m_savedName; }
+    QString playBlockedReason() const;
     void setName(const QString &n);
     void setLoop(bool v);
 
@@ -77,10 +87,15 @@ public:
     Q_INVOKABLE void load(const QVariantMap &scenario);
     Q_INVOKABLE QVariantMap toMap() const;
     Q_INVOKABLE void clear();
+    Q_INVOKABLE void markSaved(); // the current timeline was written under its name
     Q_INVOKABLE void addStep(const QString &type, const QString &preset, double durationS);
     Q_INVOKABLE void removeStep(int index);
     Q_INVOKABLE void moveStep(int index, int delta);
     Q_INVOKABLE void setStepField(int index, const QString &key, const QVariant &value);
+    // Timeline graph: [{t, delayUp, delayDown, lossUp, lossDown}] (see dlsim::scenarioCurve).
+    Q_INVOKABLE QVariantList curve() const;
+    // Jump to `seconds` from the start of the timeline. Only while paused.
+    Q_INVOKABLE void seek(double seconds);
 
     // Fade the live link from its current profiles to the named preset.
     Q_INVOKABLE void fadeTo(const QString &preset, double seconds);
@@ -89,10 +104,12 @@ public:
 
 Q_SIGNALS:
     void stepsChanged();
+    void modifiedChanged();
     void stateChanged();
     void progressChanged();
     void dropoutsChanged();
     void fadeChanged();
+    void validityChanged();
 
 private:
     enum class State { Stopped, Playing, Paused };
@@ -114,6 +131,8 @@ private:
     bool presetProfiles(const QString &name, dlsim::Profile *up, dlsim::Profile *down) const;
     double exponential(double mean);
     void updateTimer();
+    void edited(); // emit stepsChanged and set modified
+    void setSaved(const QString &name); // clear modified, remember the file name
 
     LinkController *m_link;
     PresetStore *m_presets;
@@ -127,6 +146,8 @@ private:
     double m_stepElapsedMs = 0;
     double m_totalElapsedMs = 0;
     int m_loopCount = 0;
+    bool m_modified = false;
+    QString m_savedName;
 
     bool m_dropouts = false;
     double m_meanIntervalS = 30;
@@ -138,6 +159,13 @@ private:
     Fade m_fade;
     Fade m_lastFade;
     int m_fadeRateHz = 10;
+
+    // Dropouts step: its schedule and whether the link is cut by it now.
+    QList<dlsim::DropoutWindow> m_stepDropouts;
+    bool m_inStepDropout = false;
+    void updateStepDropout();
+    // Profiles in effect when step `index` starts (the targets of the steps before it).
+    void profilesBefore(int index, dlsim::Profile *up, dlsim::Profile *down) const;
 
     QTimer m_timer;
     QElapsedTimer m_clock;

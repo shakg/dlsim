@@ -78,6 +78,8 @@ void SocketMonitor::poll()
                       [this](bool ok, const QJsonObject &res, const QString &err) {
                           m_inFlight = false;
                           if (!ok) {
+                              if (m_lastError != err)
+                                  Q_EMIT failed(err);
                               m_lastError = err;
                               Q_EMIT updated();
                               return;
@@ -90,6 +92,19 @@ void SocketMonitor::poll()
                       });
 }
 
+void SocketMonitor::setLinkCut(bool cut)
+{
+    if (cut == m_linkCut)
+        return;
+    m_linkCut = cut;
+    if (cut)
+        return;
+    const double t = m_clock.isValid() ? m_clock.elapsed() / 1000.0 : 0;
+    m_restoredAt = t;
+    for (auto &h : m_health)
+        h.linkRestored(t);
+}
+
 void SocketMonitor::process(const QList<TcpSocketInfo> &socks)
 {
     const double t = m_clock.elapsed() / 1000.0;
@@ -100,6 +115,20 @@ void SocketMonitor::process(const QList<TcpSocketInfo> &socks)
         m_allRows << qMakePair(t, s);
         QVariantMap row = s.toJson().toVariantMap();
         row["key"] = s.key();
+        const bool known = m_health.contains(s.key());
+        dlsim::SocketHealth &h = m_health[s.key()];
+        if (!known && m_restoredAt >= 0)
+            h.linkRestored(m_restoredAt);
+        const bool waiting = h.waitingForRecovery();
+        h.update(s, t);
+        if (waiting && !h.waitingForRecovery()) {
+            m_log->log("socket", QStringLiteral("%1 recovered %2 s after the link was restored")
+                                     .arg(s.key()).arg(h.lastRecoveryS(), 0, 'f', 1));
+            Q_EMIT recovered(s.key(), h.lastRecoveryS());
+        }
+        row["status"] = h.text();
+        row["statusKind"] = h.kind();
+        row["recoveryS"] = h.lastRecoveryS();
         m_rows << row;
 
         const QString prev = m_states.value(s.key());
@@ -118,6 +147,7 @@ void SocketMonitor::process(const QList<TcpSocketInfo> &socks)
         if (!now.contains(it.key())) {
             m_log->log("socket", QStringLiteral("%1 gone (was %2)").arg(it.key(), it.value()));
             m_backoff.remove(it.key());
+            m_health.remove(it.key());
         }
     }
     m_states = now;
