@@ -154,6 +154,59 @@ Item {
             }
 
             Section {
+                title: "Endpoints"
+                objectName: "endpointsSection"
+                Layout.fillWidth: true
+                Label {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    color: Theme.textDim
+                    text: "Named devices. Traffic classes refer to them; changing an IP here changes every class that uses it."
+                }
+                Repeater {
+                    model: Link.endpoints
+                    delegate: RowLayout {
+                        id: epRow
+                        required property var modelData
+                        required property int index
+                        Layout.fillWidth: true
+                        TextField {
+                            Layout.preferredWidth: 140
+                            text: epRow.modelData.name
+                            selectByMouse: true
+                            onEditingFinished: if (text.trim() !== epRow.modelData.name && !Link.renameEndpoint(epRow.modelData.name, text))
+                                                   text = epRow.modelData.name
+                        }
+                        TextField {
+                            id: epIp
+                            Layout.preferredWidth: 130
+                            readonly property bool typedValid: text === ""
+                                || /^((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])$/.test(text)
+                            text: epRow.modelData.ip
+                            placeholderText: "IPv4 address"
+                            selectByMouse: true
+                            validator: RegularExpressionValidator { regularExpression: /[0-9.]{0,15}/ }
+                            onEditingFinished: Link.setEndpointIp(epRow.modelData.name, text)
+                            ErrorFrame { show: !epIp.typedValid || !!root.errs["endpoints." + epRow.index + ".ip"] }
+                        }
+                        Label {
+                            Layout.fillWidth: true
+                            color: Theme.textDim
+                            text: epRow.modelData.uses === 0 ? "not used" : "used by " + epRow.modelData.uses
+                                  + (epRow.modelData.uses === 1 ? " class" : " classes")
+                        }
+                        ToolButton {
+                            text: "✕"
+                            onClicked: Link.removeEndpoint(epRow.modelData.name)
+                            ToolTip.visible: hovered
+                            ToolTip.text: "Remove; its classes keep the IP"
+                        }
+                    }
+                }
+                Button { text: "+ Add endpoint"; onClicked: Link.addEndpoint("", "") }
+            }
+
+            Section {
                 title: "Network interfaces"
                 Layout.fillWidth: true
                 Layout.fillHeight: true

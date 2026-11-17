@@ -236,6 +236,7 @@ QJsonObject TrafficClass::toJson() const
         {"enabled", enabled},
         {"proto", toString(proto)},
         {"ip", ip},
+        {"endpoint", endpoint},
         {"port", int(port)},
         {"mode", toString(mode)},
         {"uplink", uplink.toJson()},
@@ -250,6 +251,7 @@ TrafficClass TrafficClass::fromJson(const QJsonObject &o)
     c.enabled = o.value("enabled").toBool(true);
     parse(o.value("proto").toString(), &c.proto);
     c.ip = o.value("ip").toString().trimmed();
+    c.endpoint = o.value("endpoint").toString().trimmed();
     c.port = quint16(std::clamp(o.value("port").toInt(0), 0, 65535));
     parse(o.value("mode").toString(), &c.mode);
     c.uplink = Profile::fromJson(o.value("uplink").toObject());
@@ -304,6 +306,12 @@ QJsonObject LinkConfig::toJson() const
         {"classes", cls},
         {"otherMode", toString(otherMode)},
         {"cut", cut},
+        {"endpoints", [this] {
+             QJsonArray a;
+             for (const auto &e : endpoints)
+                 a.append(QJsonObject{{"name", e.name}, {"ip", e.ip}});
+             return a;
+         }()},
     };
 }
 
@@ -320,7 +328,61 @@ LinkConfig LinkConfig::fromJson(const QJsonObject &o)
         c.classes.append(TrafficClass::fromJson(v.toObject()));
     parse(o.value("otherMode").toString(), &c.otherMode);
     c.cut = o.value("cut").toBool(false);
+    if (o.contains("endpoints")) { // older configs have none: keep the default
+        c.endpoints.clear();
+        for (const auto &v : o.value("endpoints").toArray()) {
+            const QJsonObject e = v.toObject();
+            const QString name = e.value("name").toString().trimmed();
+            if (!name.isEmpty())
+                c.endpoints << Endpoint{name, e.value("ip").toString().trimmed()};
+        }
+    }
     return c;
+}
+
+QString LinkConfig::endpointIp(const QString &name) const
+{
+    for (const auto &e : endpoints)
+        if (e.name == name)
+            return e.ip;
+    return {};
+}
+
+void LinkConfig::setEndpointIp(const QString &name, const QString &ip)
+{
+    for (auto &e : endpoints)
+        if (e.name == name)
+            e.ip = ip.trimmed();
+    for (auto &c : classes)
+        if (c.endpoint == name)
+            c.ip = ip.trimmed();
+}
+
+bool LinkConfig::renameEndpoint(const QString &from, const QString &to)
+{
+    const QString n = to.trimmed();
+    if (n.isEmpty())
+        return false;
+    if (n == from)
+        return true;
+    for (const auto &e : endpoints)
+        if (e.name == n)
+            return false;
+    for (auto &e : endpoints)
+        if (e.name == from)
+            e.name = n;
+    for (auto &c : classes)
+        if (c.endpoint == from)
+            c.endpoint = n;
+    return true;
+}
+
+void LinkConfig::removeEndpoint(const QString &name)
+{
+    endpoints.removeIf([&](const Endpoint &e) { return e.name == name; });
+    for (auto &c : classes)
+        if (c.endpoint == name)
+            c.endpoint.clear();
 }
 
 QStringList LinkConfig::validate(const QStringList &knownIfaces) const { return issueTexts(issues(knownIfaces)); }
@@ -355,8 +417,15 @@ QList<Issue> LinkConfig::issues(const QStringList &knownIfaces) const
     e << downlink.issues("downlink.", "downlink.");
     if (classes.size() > kMaxClasses)
         add(e, "classes", {}, QStringLiteral("at most %1 traffic classes").arg(kMaxClasses));
+    for (int i = 0; i < endpoints.size(); ++i)
+        if (!endpoints[i].ip.isEmpty() && !isValidIp(endpoints[i].ip))
+            add(e, QStringLiteral("endpoints.%1.ip").arg(i), QStringLiteral("endpoint '%1': ").arg(endpoints[i].name),
+                QStringLiteral("invalid IPv4 address '%1'").arg(endpoints[i].ip));
     int custom = 0;
     for (int i = 0; i < classes.size(); ++i) {
+        if (!classes[i].endpoint.isEmpty() && classes[i].ip.isEmpty())
+            add(e, QStringLiteral("classes.%1.ip").arg(i), QStringLiteral("class '%1': ").arg(classes[i].name),
+                QStringLiteral("endpoint '%1' has no IP yet (set it under Endpoints)").arg(classes[i].endpoint));
         e << classes[i].issues(i);
         if (classes[i].enabled && classes[i].mode == ClassMode::Custom)
             ++custom;

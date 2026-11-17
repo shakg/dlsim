@@ -103,6 +103,64 @@ QVariantList LinkController::classes() const
     return out;
 }
 
+QVariantList LinkController::endpoints() const
+{
+    QVariantList out;
+    for (const auto &e : m_edit.endpoints) {
+        int uses = 0;
+        for (const auto &c : m_edit.classes)
+            uses += c.endpoint == e.name;
+        out << QVariantMap{{"name", e.name}, {"ip", e.ip}, {"uses", uses}};
+    }
+    return out;
+}
+
+void LinkController::addClassFor(const QString &name, const QString &proto, const QString &endpoint, int port,
+                                 const QString &mode)
+{
+    const qsizetype before = m_edit.classes.size();
+    addClass(name, proto, m_edit.endpointIp(endpoint), port, mode);
+    if (m_edit.classes.size() > before && !endpoint.isEmpty()) {
+        m_edit.classes.last().endpoint = endpoint;
+        edited(true);
+    }
+}
+
+void LinkController::addEndpoint(const QString &name, const QString &ip)
+{
+    const auto taken = [this](const QString &n) {
+        return std::any_of(m_edit.endpoints.cbegin(), m_edit.endpoints.cend(), [&](const Endpoint &e) { return e.name == n; });
+    };
+    const QString base = name.trimmed().isEmpty() ? QStringLiteral("Endpoint") : name.trimmed();
+    QString n = base;
+    for (int i = 2; taken(n); ++i)
+        n = QStringLiteral("%1 %2").arg(base).arg(i);
+    m_edit.endpoints << Endpoint{n, ip.trimmed()};
+    edited(false);
+}
+
+bool LinkController::renameEndpoint(const QString &from, const QString &to)
+{
+    if (!m_edit.renameEndpoint(from, to))
+        return false;
+    edited(false);
+    return true;
+}
+
+void LinkController::setEndpointIp(const QString &name, const QString &ip)
+{
+    if (m_edit.endpointIp(name) == ip.trimmed())
+        return;
+    m_edit.setEndpointIp(name, ip);
+    edited(true);
+}
+
+void LinkController::removeEndpoint(const QString &name)
+{
+    m_edit.removeEndpoint(name);
+    edited(false);
+}
+
 // ---------------------------------------------------------------- setters
 
 void LinkController::setMode(const QString &m)
@@ -291,7 +349,11 @@ void LinkController::setClassField(int index, const QString &key, const QVariant
 {
     if (index < 0 || index >= m_edit.classes.size())
         return;
-    const TrafficClass c = m_edit.classes[index].withField(key, QJsonValue::fromVariant(value));
+    TrafficClass c = m_edit.classes[index].withField(key, QJsonValue::fromVariant(value));
+    if (key == "endpoint")
+        c.ip = c.endpoint.isEmpty() ? m_edit.classes[index].ip : m_edit.endpointIp(c.endpoint);
+    else if (key == "ip")
+        c.endpoint.clear(); // a typed IP replaces the endpoint
     if (c == m_edit.classes[index])
         return;
     m_edit.classes[index] = c;

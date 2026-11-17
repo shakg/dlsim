@@ -28,6 +28,8 @@ class LinkController : public QObject
     Q_PROPERTY(QVariantMap uplink READ uplink NOTIFY configChanged)
     Q_PROPERTY(QVariantMap downlink READ downlink NOTIFY configChanged)
     Q_PROPERTY(QVariantList classes READ classes NOTIFY configChanged)
+    // [{name, ip, uses}]: named devices traffic classes can refer to.
+    Q_PROPERTY(QVariantList endpoints READ endpoints NOTIFY configChanged)
     Q_PROPERTY(bool otherExcluded READ otherExcluded WRITE setOtherExcluded NOTIFY configChanged)
     Q_PROPERTY(QString activePreset READ activePreset NOTIFY configChanged)
     // Plain-language result of both profiles, e.g. "≈ 80 ms round trip · ...".
@@ -60,6 +62,7 @@ public:
     QVariantMap uplink() const { return m_edit.uplink.toJson().toVariantMap(); }
     QVariantMap downlink() const { return m_edit.downlink.toJson().toVariantMap(); }
     QVariantList classes() const;
+    QVariantList endpoints() const;
     bool otherExcluded() const { return m_edit.otherMode == dlsim::ClassMode::Excluded; }
     QString activePreset() const { return m_activePreset; }
     QString summary() const;
@@ -107,6 +110,13 @@ public:
     // Traffic classes
     Q_INVOKABLE void addClass(const QString &name, const QString &proto, const QString &ip, int port, const QString &mode);
     Q_INVOKABLE void removeClass(int index);
+    // From a traffic template: proto, port and mode from it, IP from the endpoint (empty = any IP).
+    Q_INVOKABLE void addClassFor(const QString &name, const QString &proto, const QString &endpoint, int port,
+                                 const QString &mode);
+    Q_INVOKABLE void addEndpoint(const QString &name, const QString &ip);
+    Q_INVOKABLE bool renameEndpoint(const QString &from, const QString &to);
+    Q_INVOKABLE void setEndpointIp(const QString &name, const QString &ip);
+    Q_INVOKABLE void removeEndpoint(const QString &name);
     Q_INVOKABLE void moveClass(int index, int delta);
     Q_INVOKABLE void setClassField(int index, const QString &key, const QVariant &value);
     Q_INVOKABLE void setClassProfileField(int index, const QString &dir, const QString &key, const QVariant &value);

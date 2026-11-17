@@ -434,3 +434,8 @@ bool PresetStore::createTemplatePresets(const QVariantMap &expanded)
     }
     return true;
 }
+
+QVariantList PresetStore::trafficTemplates() const
+{
+    return readJsonFile(":/presets/traffic.json").array().toVariantList();
+}

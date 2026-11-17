@@ -220,7 +220,13 @@ fixed. DLSim warns before you impair an interface that carries the default
 route or an SSH session, before enslaving an interface with addresses to the
 bridge, and when NetworkManager manages a bridge port. **Start** creates the
 bridge (bridge mode) and applies the profiles; **Stop** removes them. The
-right side holds the **traffic classes**: protocol + IP + port, each using the
+right side holds the **traffic classes**, added with **Add traffic ▾** from templates (MAVLink
+TCP/UDP, RTSP/RTP video, SSH, HTTP, custom; `presets/traffic.json`) that ask
+for the endpoint and fill protocol and port. Each row reads as a sentence
+("Telemetry · TCP to/from Vehicle:4555 · uses link profile"); **Edit** opens
+its fields. **Endpoints** (left) name the devices, e.g. *Vehicle* = 192.0.2.10;
+changing an endpoint's IP changes every class that uses it. A class is
+protocol + IP (or endpoint) + port, each using the
 link profile, a custom profile (own uplink/downlink netem), or excluded. A
 class matches packets *to or from* IP:port, so one class covers both
 directions. First match wins. "Other traffic" uses the link profile or is

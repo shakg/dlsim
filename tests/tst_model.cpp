@@ -14,6 +14,8 @@ private Q_SLOTS:
     void classProtoWithPortsKeepsPort();
     void classWithFieldKeepsOtherFields();
     void issuePaths();
+    void endpoints();
+    void oldConfigWithoutEndpoints();
 };
 
 void TestModel::classProtoWithoutPortsDropsPort_data()
@@ -96,6 +98,54 @@ void TestModel::issuePaths()
     cfg.airIface.clear();
     QCOMPARE(cfg.issues({"eth0"}).first().path, QStringLiteral("airIface"));
     QCOMPARE(cfg.issues({"eth0"}).first().message, QStringLiteral("choose an interface"));
+}
+
+void TestModel::endpoints()
+{
+    LinkConfig cfg;
+    cfg.mode = Mode::Host;
+    cfg.hostIface = "eth0";
+    TrafficClass tel;
+    tel.name = "Telemetry";
+    tel.proto = Proto::Tcp;
+    tel.port = 4555;
+    tel.endpoint = "Vehicle";
+    TrafficClass lit;
+    lit.name = "Literal";
+    lit.ip = "198.51.100.7";
+    cfg.classes = {tel, lit};
+    // No IP on the endpoint yet: the class can't be matched.
+    QVERIFY(cfg.validate({"eth0"}).join(";").contains("has no IP yet"));
+    cfg.setEndpointIp("Vehicle", "192.0.2.10");
+    QCOMPARE(cfg.classes[0].ip, QStringLiteral("192.0.2.10"));
+    QCOMPARE(cfg.classes[1].ip, QStringLiteral("198.51.100.7"));
+    QVERIFY2(cfg.validate({"eth0"}).isEmpty(), qPrintable(cfg.validate({"eth0"}).join(";")));
+    cfg.setEndpointIp("Vehicle", "192.0.2.99");
+    QCOMPARE(cfg.classes[0].ip, QStringLiteral("192.0.2.99"));
+    QVERIFY(cfg.renameEndpoint("Vehicle", "Drone"));
+    QCOMPARE(cfg.classes[0].endpoint, QStringLiteral("Drone"));
+    cfg.endpoints << Endpoint{"Base", "192.0.2.1"};
+    QVERIFY(!cfg.renameEndpoint("Drone", "Base"));
+    cfg.removeEndpoint("Drone");
+    QVERIFY(cfg.classes[0].endpoint.isEmpty());
+    QCOMPARE(cfg.classes[0].ip, QStringLiteral("192.0.2.99")); // kept as a literal
+    cfg.endpoints[0].ip = "300.1.1.1";
+    QCOMPARE(cfg.issues({"eth0"}).first().path, QStringLiteral("endpoints.0.ip"));
+    // Round trip
+    const LinkConfig back = LinkConfig::fromJson(cfg.toJson());
+    QVERIFY(back == cfg);
+}
+
+void TestModel::oldConfigWithoutEndpoints()
+{
+    const LinkConfig c = LinkConfig::fromJson(QJsonObject{
+        {"mode", "bridge"}, {"groundIface", "eth0"}, {"airIface", "eth1"},
+        {"classes", QJsonArray{QJsonObject{{"name", "MAVLink"}, {"proto", "tcp"}, {"ip", "192.0.2.10"}, {"port", 4555}}}}});
+    QCOMPARE(c.classes[0].ip, QStringLiteral("192.0.2.10"));
+    QVERIFY(c.classes[0].endpoint.isEmpty());
+    QCOMPARE(c.endpoints.size(), 1);
+    QCOMPARE(c.endpoints[0].name, QStringLiteral("Vehicle"));
+    QVERIFY(c.validate({"eth0", "eth1"}).isEmpty());
 }
 
 QTEST_GUILESS_MAIN(TestModel)

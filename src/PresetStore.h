@@ -55,6 +55,8 @@ public:
     // Goal-based scenario templates (presets/templates.json, plus
     // ~/.config/dlsim/templates/*.json): [{name, description, params}].
     Q_INVOKABLE QVariantList templates() const;
+    // Traffic class templates (presets/traffic.json): [{name, label, proto, port, mode, needsEndpoint}].
+    Q_INVOKABLE QVariantList trafficTemplates() const;
     // Expands template `index` with values: {name, loop, steps, presets, totalS,
     // missingPresets}. presets are resolved to full {name, description, uplink,
     // downlink} and listed only when they don't exist yet.

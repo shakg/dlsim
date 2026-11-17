@@ -91,11 +91,20 @@ Profile interpolate(const Profile &a, const Profile &b, double t);
 // The same profile with 100% random loss: used for CUT LINK.
 Profile cutProfile(const Profile &p);
 
+// A named device on the link, e.g. "Vehicle" = 192.0.2.10. Traffic classes
+// can refer to one by name; changing its IP changes theirs.
+struct Endpoint {
+    QString name;
+    QString ip; // empty = not set yet
+    bool operator==(const Endpoint &) const = default;
+};
+
 struct TrafficClass {
     QString name;
     bool enabled = true;
     Proto proto = Proto::Any;
     QString ip;        // empty = any. Matches either source or destination (endpoint semantics)
+    QString endpoint;  // name of the Endpoint ip comes from; empty = literal ip
     quint16 port = 0;  // 0 = any. Requires tcp or udp
     ClassMode mode = ClassMode::Link;
     Profile uplink;    // used when mode == Custom
@@ -121,6 +130,15 @@ struct LinkConfig {
     QList<TrafficClass> classes;
     ClassMode otherMode = ClassMode::Link; // Link or Excluded
     bool cut = false;
+    QList<Endpoint> endpoints{{QStringLiteral("Vehicle"), {}}};
+
+    // Set an endpoint's IP and the IP of every class that uses it.
+    void setEndpointIp(const QString &name, const QString &ip);
+    // Rename an endpoint and follow it in the classes. False if the new name is taken or empty.
+    bool renameEndpoint(const QString &from, const QString &to);
+    // Remove an endpoint; its classes keep their IP as a literal one.
+    void removeEndpoint(const QString &name);
+    QString endpointIp(const QString &name) const;
 
     bool operator==(const LinkConfig &) const = default;
     QJsonObject toJson() const;
