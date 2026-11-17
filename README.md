@@ -1,6 +1,7 @@
 # DLSim
 
 [![CI](https://github.com/shakg/dlsim/actions/workflows/ci.yml/badge.svg)](https://github.com/shakg/dlsim/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 DLSim is a Linux desktop app for testing software over unreliable radio links.
 It uses `tc`/netem to add latency, jitter, packet loss, bandwidth limits,
@@ -23,58 +24,30 @@ profile, use its own profile, or bypass impairment entirely.
 - HTML run reports and CSV exports
 - Bridge mode for a dedicated test box and host mode for a single PC
 
-## Requirements
-
-DLSim is tested on Ubuntu 24.04 with Qt 6.4. It needs Linux traffic control,
-`pkexec`, and either one or two Ethernet interfaces depending on the mode.
-
-Install the build and runtime dependencies:
-
-```bash
-sudo apt install \
-  build-essential cmake ninja-build libgl-dev \
-  qt6-base-dev qt6-declarative-dev qt6-charts-dev \
-  qml6-module-qtquick qml6-module-qtquick-controls \
-  qml6-module-qtquick-layouts qml6-module-qtquick-window \
-  qml6-module-qtquick-templates qml6-module-qtqml-workerscript \
-  qml6-module-qtquick-dialogs qml6-module-qt-labs-folderlistmodel \
-  qml6-module-qtcharts qml6-module-qt5compat-graphicaleffects \
-  qt6-qpa-plugins iproute2 pkexec polkitd
-```
-
 ## Install
 
-Build and install from source:
+Download the latest package from
+[GitHub Releases](https://github.com/shakg/dlsim/releases/latest).
+
+### Debian / Ubuntu
 
 ```bash
-git clone https://github.com/shakg/dlsim.git
-cd dlsim
-cmake -S . -B build -G Ninja \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_INSTALL_PREFIX=/usr
-cmake --build build
-ctest --test-dir build --output-on-failure
-sudo cmake --install build
+sudo apt install ./dlsim_*.deb
 ```
 
-The install prefix must be set while configuring because the GUI and polkit
-policy embed the helper path.
+The package installs DLSim, its desktop entry, the privileged helper and the
+polkit policy. `apt` installs the required Qt and system packages.
 
-To build a Debian package instead:
+### AppImage
 
 ```bash
-(cd build && cpack -G DEB)
-sudo apt install ./build/dlsim_*.deb
+sudo apt install iproute2 pkexec
+chmod +x DLSim-*-x86_64.AppImage
+./DLSim-*-x86_64.AppImage
 ```
 
-To build an AppImage:
-
-```bash
-sudo apt install patchelf file qt6-base-dev-tools
-packaging/appimage/build-appimage.sh dist-out
-```
-
-The AppImage bundles Qt, but the host still needs `iproute2` and `pkexec`.
+The AppImage bundles Qt. It is built for x86-64 Linux and requires glibc 2.39
+or newer, as provided by Ubuntu 24.04.
 
 ## Usage
 
@@ -82,12 +55,6 @@ Start the installed app:
 
 ```bash
 dlsim
-```
-
-Or run it from the build directory:
-
-```bash
-./build/src/dlsim
 ```
 
 On first run:
@@ -170,27 +137,6 @@ outage.
 When a scenario stops or finishes, DLSim writes a self-contained HTML report
 with the setup, timeline, outages, TCP recovery times and charts.
 
-## Development
-
-Common commands are available through [just](https://github.com/casey/just):
-
-```bash
-just build
-just run
-just test
-just ui          # run without the privileged helper
-```
-
-The unit tests do not need root. The integration self-test does:
-
-```bash
-sudo apt install iperf3 jq iputils-ping
-sudo scripts/selftest.sh
-```
-
-It creates temporary network namespaces and verifies bridge mode, host mode,
-loss, delay, rate limits, traffic exclusions, outages and cleanup.
-
 ## How it works
 
 The GUI runs as the current user and starts `dlsim-helper` through `pkexec`.
@@ -223,3 +169,13 @@ tests/      Unit tests
 scripts/    Root integration self-test
 packaging/  AppImage builder
 ```
+
+## Contributing
+
+Build instructions, tests, packaging, CI/CD and the release process are in
+[CONTRIBUTING.md](CONTRIBUTING.md). By participating, you agree to follow the
+[Code of Conduct](CODE_OF_CONDUCT.md).
+
+## License
+
+[MIT](LICENSE)
