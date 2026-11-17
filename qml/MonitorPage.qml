@@ -120,7 +120,8 @@ Item {
                 BoundCombo {
                     id: peerPick
                     objectName: "peerPicker"
-                    readonly property var classes: Link.classes.filter(c => c.proto === "tcp" && c.ip && c.port > 0)
+                    readonly property var classes: Link.classes.filter(c => (c.proto === "tcp" || c.proto === "websocket")
+                                                                         && c.ip && c.port > 0)
                     readonly property string currentKey: Sockets.peerIp + ":" + Sockets.peerPort
                     property bool other: false
                     Layout.preferredWidth: Theme.s(260)

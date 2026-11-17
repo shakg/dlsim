@@ -22,7 +22,10 @@ enum class Direction { Uplink, Downlink }; // uplink = ground->air, downlink = a
 enum class Mode { Bridge, Host };
 enum class Distribution { Uniform, Normal, Pareto, ParetoNormal };
 enum class LossModel { Random, GilbertElliott };
-enum class Proto { Any, Tcp, Udp, Icmp };
+// WebSocket is kept as an application-level label in configs and reports. The
+// kernel classifier matches it as TCP because flower cannot inspect the HTTP
+// upgrade or WebSocket frames.
+enum class Proto { Any, Tcp, Udp, Icmp, WebSocket };
 enum class ClassMode { Link, Custom, Excluded };
 
 QString toString(Direction);
@@ -105,7 +108,7 @@ struct TrafficClass {
     Proto proto = Proto::Any;
     QString ip;        // empty = any. Matches either source or destination (endpoint semantics)
     QString endpoint;  // name of the Endpoint ip comes from; empty = literal ip
-    quint16 port = 0;  // 0 = any. Requires tcp or udp
+    quint16 port = 0;  // 0 = any. Requires tcp, udp or websocket
     ClassMode mode = ClassMode::Link;
     Profile uplink;    // used when mode == Custom
     Profile downlink;

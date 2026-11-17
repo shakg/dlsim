@@ -41,8 +41,9 @@ constexpr std::array<std::pair<Distribution, const char *>, 4> kDistributions{{
     {Distribution::Pareto, "pareto"}, {Distribution::ParetoNormal, "paretonormal"}}};
 constexpr std::array<std::pair<LossModel, const char *>, 2> kLossModels{{
     {LossModel::Random, "random"}, {LossModel::GilbertElliott, "gemodel"}}};
-constexpr std::array<std::pair<Proto, const char *>, 4> kProtos{{
-    {Proto::Any, "any"}, {Proto::Tcp, "tcp"}, {Proto::Udp, "udp"}, {Proto::Icmp, "icmp"}}};
+constexpr std::array<std::pair<Proto, const char *>, 5> kProtos{{
+    {Proto::Any, "any"}, {Proto::Tcp, "tcp"}, {Proto::Udp, "udp"}, {Proto::Icmp, "icmp"},
+    {Proto::WebSocket, "websocket"}}};
 constexpr std::array<std::pair<ClassMode, const char *>, 3> kClassModes{{
     {ClassMode::Link, "link"}, {ClassMode::Custom, "custom"}, {ClassMode::Excluded, "excluded"}}};
 
@@ -264,7 +265,7 @@ TrafficClass TrafficClass::withField(const QString &key, const QJsonValue &value
     QJsonObject o = toJson();
     o.insert(key, value);
     TrafficClass c = fromJson(o);
-    if (c.proto != Proto::Tcp && c.proto != Proto::Udp)
+    if (c.proto != Proto::Tcp && c.proto != Proto::Udp && c.proto != Proto::WebSocket)
         c.port = 0;
     return c;
 }
@@ -280,8 +281,8 @@ QList<Issue> TrafficClass::issues(int index) const
         add(e, pp + "name", tp, QStringLiteral("name too long"));
     if (!ip.isEmpty() && !isValidIp(ip))
         add(e, pp + "ip", tp, QStringLiteral("invalid IPv4 address '%1'").arg(ip));
-    if (port != 0 && proto != Proto::Tcp && proto != Proto::Udp)
-        add(e, pp + "port", tp, QStringLiteral("a port needs protocol tcp or udp"));
+    if (port != 0 && proto != Proto::Tcp && proto != Proto::Udp && proto != Proto::WebSocket)
+        add(e, pp + "port", tp, QStringLiteral("a port needs protocol tcp, udp or websocket"));
     if (mode == ClassMode::Custom) {
         e << uplink.issues(pp + "uplink.", tp + "uplink.");
         e << downlink.issues(pp + "downlink.", tp + "downlink.");

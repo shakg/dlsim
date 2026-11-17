@@ -5,5 +5,6 @@
   { "name": "RTP video (UDP)", "label": "Video", "proto": "udp", "port": 5600, "mode": "link", "needsEndpoint": true },
   { "name": "SSH (kept clean)", "label": "SSH", "proto": "tcp", "port": 22, "mode": "excluded", "needsEndpoint": false },
   { "name": "HTTP (TCP)", "label": "HTTP", "proto": "tcp", "port": 80, "mode": "link", "needsEndpoint": true },
+  { "name": "WebSocket (TCP)", "label": "WebSocket", "proto": "websocket", "port": 8080, "mode": "link", "needsEndpoint": true },
   { "name": "Custom…", "label": "", "proto": "tcp", "port": 0, "mode": "link", "needsEndpoint": false }
 ]

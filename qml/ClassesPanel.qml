@@ -13,9 +13,9 @@ Section {
 
     // "Telemetry · TCP to/from Vehicle:4555 · uses link profile"
     function sentence(c) {
-        const proto = c.proto === "any" ? "All protocols" : c.proto.toUpperCase()
+        const proto = c.proto === "any" ? "All protocols" : c.proto === "websocket" ? "WebSocket" : c.proto.toUpperCase()
         const where = c.endpoint ? c.endpoint + (c.ip ? "" : " (no IP yet)") : (c.ip || "any IP")
-        const port = (c.proto === "tcp" || c.proto === "udp") && c.port > 0 ? ":" + c.port : ""
+        const port = (c.proto === "tcp" || c.proto === "udp" || c.proto === "websocket") && c.port > 0 ? ":" + c.port : ""
         const mode = c.mode === "excluded" ? "never impaired" : c.mode === "custom" ? "own profile" : "uses link profile"
         return (c.name ? c.name + " · " : "") + proto + " to/from " + where + port + " · " + mode
     }
@@ -135,8 +135,8 @@ Section {
                     }
                     BoundCombo {
                         Layout.preferredWidth: Theme.s(70)
-                        values: ["any", "tcp", "udp", "icmp"]
-                        labels: ["any", "TCP", "UDP", "ICMP"]
+                        values: ["any", "tcp", "udp", "icmp", "websocket"]
+                        labels: ["any", "TCP", "UDP", "ICMP", "WebSocket"]
                         current: row.modelData.proto
                         onPicked: (v) => Link.setClassField(row.index, "proto", v)
                     }
@@ -169,6 +169,7 @@ Section {
                     // Wrapper so the tooltip still shows while the field is disabled.
                     Item {
                         readonly property bool hasPorts: row.modelData.proto === "tcp" || row.modelData.proto === "udp"
+                                                         || row.modelData.proto === "websocket"
                         Layout.preferredWidth: Theme.s(58)
                         implicitHeight: portField.implicitHeight
                         AppTextField {
@@ -184,7 +185,7 @@ Section {
                         }
                         HoverHandler { id: portHover }
                         ToolTip.visible: !hasPorts && portHover.hovered
-                        ToolTip.text: "A port needs protocol TCP or UDP"
+                        ToolTip.text: "A port needs TCP, UDP or WebSocket"
                         ToolTip.delay: 300
                     }
                 }
@@ -336,8 +337,8 @@ Section {
             BoundCombo {
                 id: protoPick
                 Layout.fillWidth: true
-                values: ["any", "tcp", "udp", "icmp"]
-                labels: ["any", "TCP", "UDP", "ICMP"]
+                values: ["any", "tcp", "udp", "icmp", "websocket"]
+                labels: ["any", "TCP", "UDP", "ICMP", "WebSocket"]
                 onPicked: (v) => current = v
             }
             Label { text: "To/from" }
@@ -352,8 +353,8 @@ Section {
             AppTextField {
                 id: portField2
                 Layout.fillWidth: true
-                enabled: protoPick.current === "tcp" || protoPick.current === "udp"
-                property string disabledReason: "A port needs protocol TCP or UDP"
+                enabled: protoPick.current === "tcp" || protoPick.current === "udp" || protoPick.current === "websocket"
+                property string disabledReason: "A port needs TCP, UDP or WebSocket"
                 selectByMouse: true
                 placeholderText: "any port"
                 validator: IntValidator { bottom: 0; top: 65535 }
@@ -363,7 +364,9 @@ Section {
                 Layout.fillWidth: true
                 wrapMode: Text.WordWrap
                 color: Theme.textDim
-                text: "Endpoints (named devices like Vehicle) are set on the left, under Endpoints."
+                text: protoPick.current === "websocket"
+                      ? "WebSocket is matched by its TCP port; encrypted WSS and other TCP traffic on the same port cannot be distinguished."
+                      : "Endpoints (named devices like Vehicle) are set under Advanced setup."
             }
         }
     }

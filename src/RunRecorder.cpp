@@ -30,12 +30,14 @@ bool writeFile(const QString &path, const QByteArray &data)
 QString classSentence(const QVariantMap &c)
 {
     const QString proto = c.value("proto").toString();
+    const QString protoLabel = proto == "any" ? QStringLiteral("all protocols")
+                               : proto == "websocket" ? QStringLiteral("WebSocket") : proto.toUpper();
     const QString where = !c.value("endpoint").toString().isEmpty() ? c.value("endpoint").toString()
                           : !c.value("ip").toString().isEmpty() ? c.value("ip").toString() : QStringLiteral("any IP");
     const int port = c.value("port").toInt();
     const QString mode = c.value("mode").toString();
     return QStringLiteral("%1 · %2 to/from %3%4 · %5")
-        .arg(c.value("name").toString(), proto == "any" ? QStringLiteral("all protocols") : proto.toUpper(), where,
+        .arg(c.value("name").toString(), protoLabel, where,
              port > 0 ? ":" + QString::number(port) : QString(),
              mode == "excluded" ? "never impaired" : mode == "custom" ? "own profile" : "uses link profile");
 }
