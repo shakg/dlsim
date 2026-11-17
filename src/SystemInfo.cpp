@@ -39,6 +39,64 @@ QString stripPort(QString addr)
 SystemInfo::SystemInfo(QObject *parent) : QObject(parent)
 {
     refresh();
+    m_sampleTimer.setInterval(1000);
+    connect(&m_sampleTimer, &QTimer::timeout, this, &SystemInfo::sample);
+    m_sampleTimer.start();
+    sample();
+}
+
+void SystemInfo::sample()
+{
+    const QString root = qEnvironmentVariable("DLSIM_SYSFS_NET", QStringLiteral("/sys/class/net"));
+    const double dt = m_sampleClock.isValid() ? double(m_sampleClock.restart()) : 0;
+    if (!m_sampleClock.isValid())
+        m_sampleClock.start();
+    QHash<QString, int> carriers;
+    QVariantMap live;
+    for (const QString &n : m_names) {
+        const dlsim::NicSample s = dlsim::readNic(root, n);
+        const auto prev = m_last.constFind(n);
+        const bool have = prev != m_last.cend() && dt > 0;
+        live.insert(n, QVariantMap{{"carrier", s.carrier},
+                                   {"speedMbps", s.speedMbps},
+                                   {"rxKbps", have ? dlsim::rateKbps(prev->rxBytes, s.rxBytes, dt) : 0.0},
+                                   {"txKbps", have ? dlsim::rateKbps(prev->txBytes, s.txBytes, dt) : 0.0},
+                                   {"physical", s.physical}});
+        m_last.insert(n, s);
+        carriers.insert(n, s.carrier);
+    }
+    m_live = live;
+    Q_EMIT liveChanged();
+    if (m_unplug.state() == dlsim::UnplugDetector::State::Waiting
+        && m_unplug.update(carriers) != dlsim::UnplugDetector::State::Waiting)
+        Q_EMIT identifyChanged();
+}
+
+QString SystemInfo::identifyState() const
+{
+    switch (m_unplug.state()) {
+    case dlsim::UnplugDetector::State::Idle: return QStringLiteral("idle");
+    case dlsim::UnplugDetector::State::Waiting: return QStringLiteral("waiting");
+    case dlsim::UnplugDetector::State::Found: return QStringLiteral("found");
+    case dlsim::UnplugDetector::State::Ambiguous: return QStringLiteral("ambiguous");
+    }
+    return {};
+}
+
+void SystemInfo::startIdentify(const QStringList &candidates)
+{
+    QHash<QString, int> carriers;
+    for (auto it = m_live.cbegin(); it != m_live.cend(); ++it)
+        if (candidates.contains(it.key()))
+            carriers.insert(it.key(), it.value().toMap().value("carrier").toInt());
+    m_unplug.start(carriers);
+    Q_EMIT identifyChanged();
+}
+
+void SystemInfo::cancelIdentify()
+{
+    m_unplug.cancel();
+    Q_EMIT identifyChanged();
 }
 
 void SystemInfo::refresh()

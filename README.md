@@ -214,7 +214,12 @@ throughput and drops; the labels follow fades and scenarios. Below: the
 current condition (**Change…** opens Link), **Timed outage** (cut for N
 seconds, then restore) and the scenario's Play/Pause.
 
-**Setup.** Pick bridge or host mode and the interface(s). Problems are shown
+**Setup.** Pick bridge or host mode and the interface(s). The interface list
+shows, per port and refreshed every second without root, whether a cable is
+in (carrier), the speed and the live rx/tx rate; virtual interfaces are hidden
+unless **Show all** is on. **Identify…** next to each NIC asks you to unplug
+the cable going to that side and picks the port that loses its link. Home
+shows each port's cable state under Ground and Vehicle. Problems are shown
 next to the field that causes them, and Start stays disabled until they are
 fixed. DLSim warns before you impair an interface that carries the default
 route or an SSH session, before enslaving an interface with addresses to the

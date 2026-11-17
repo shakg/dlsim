@@ -17,6 +17,8 @@ Item {
     }
 
     readonly property var errs: Link.fieldErrors
+    property bool showAllIfaces: false
+    function inUse(n) { return n !== "" && (n === Link.groundIface || n === Link.airIface || n === Link.hostIface) }
     readonly property string helperReason: "The privileged helper is not running (Start helper, at the top)"
     // First problem with the configuration, shown as the Start button's tooltip.
     readonly property string firstError: Link.validationErrors.length > 0 ? Link.validationErrors[0] : ""
@@ -83,7 +85,7 @@ Item {
                 title: "Interfaces"
                 Layout.fillWidth: true
                 GridLayout {
-                    columns: 2
+                    columns: 3
                     columnSpacing: 8
                     visible: Link.mode === "bridge"
                     Label { text: "Ground NIC" }
@@ -97,8 +99,16 @@ Item {
                         onPicked: (v) => Link.groundIface = v
                         ErrorFrame { show: !!root.errs.groundIface }
                     }
+                    Button {
+                        text: "Identify…"
+                        enabled: !Link.active
+                        property string disabledReason: "Stop the link to change interfaces"
+                        onClicked: identifyDialog.openFor("ground")
+                        ToolTip.visible: hovered && enabled
+                        ToolTip.text: "Find the ground port by unplugging its cable"
+                    }
                     Item { visible: !!root.errs.groundIface; implicitWidth: 1 }
-                    FieldError { msg: root.errs.groundIface || "" }
+                    FieldError { visible: msg.length > 0; Layout.columnSpan: 2; msg: root.errs.groundIface || "" }
                     Label { text: "Air NIC" }
                     BoundCombo {
                         Layout.fillWidth: true
@@ -110,8 +120,17 @@ Item {
                         onPicked: (v) => Link.airIface = v
                         ErrorFrame { show: !!root.errs.airIface }
                     }
+                    Button {
+                        objectName: "identifyAir"
+                        text: "Identify…"
+                        enabled: !Link.active
+                        property string disabledReason: "Stop the link to change interfaces"
+                        onClicked: identifyDialog.openFor("air")
+                        ToolTip.visible: hovered && enabled
+                        ToolTip.text: "Find the vehicle-side port by unplugging its cable"
+                    }
                     Item { visible: !!root.errs.airIface; implicitWidth: 1 }
-                    FieldError { msg: root.errs.airIface || "" }
+                    FieldError { visible: msg.length > 0; Layout.columnSpan: 2; msg: root.errs.airIface || "" }
                 }
                 RowLayout {
                     visible: Link.mode === "host"
@@ -210,38 +229,77 @@ Item {
                 title: "Network interfaces"
                 Layout.fillWidth: true
                 Layout.fillHeight: true
+                RowLayout {
+                    Label {
+                        Layout.fillWidth: true
+                        color: Theme.textDim
+                        text: root.showAllIfaces ? "All interfaces" : "Physical ports (and the ones in use)"
+                    }
+                    CheckBox {
+                        objectName: "showAllIfaces"
+                        text: "Show all"
+                        checked: root.showAllIfaces
+                        onToggled: root.showAllIfaces = checked
+                        ToolTip.visible: hovered
+                        ToolTip.text: "Also show virtual interfaces (loopback, veth, bridges, ifb, …)"
+                    }
+                }
                 ListView {
                     id: ifList
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     clip: true
-                    model: Sys.interfaces
+                    model: Sys.interfaces.filter(i => root.showAllIfaces || root.inUse(i.name)
+                                                      || (Sys.live[i.name] && Sys.live[i.name].physical))
                     ScrollBar.vertical: ScrollBar {}
                     header: RowLayout {
                         width: ifList.width
-                        Label { text: "Name"; Layout.preferredWidth: 110; color: Theme.textDim }
-                        Label { text: "State"; Layout.preferredWidth: 80; color: Theme.textDim }
-                        Label { text: "Kind"; Layout.preferredWidth: 60; color: Theme.textDim }
+                        Label { text: "Name"; Layout.preferredWidth: 80; color: Theme.textDim }
+                        Label { text: "Cable"; Layout.preferredWidth: 78; color: Theme.textDim }
+                        Label { text: "Speed"; Layout.preferredWidth: 62; color: Theme.textDim }
+                        Label { text: "Rx / Tx"; Layout.preferredWidth: 130; color: Theme.textDim }
                         Label { text: "Addresses / notes"; Layout.fillWidth: true; color: Theme.textDim }
                     }
                     delegate: RowLayout {
+                        id: ifRow
                         required property var modelData
+                        readonly property var lv: Sys.live[modelData.name] || ({})
                         width: ifList.width
-                        Label { text: modelData.name; Layout.preferredWidth: 110; elide: Text.ElideRight; font.bold: true }
                         Label {
-                            text: modelData.state
+                            text: ifRow.modelData.name
                             Layout.preferredWidth: 80
-                            color: modelData.state === "UP" ? Theme.ok : Theme.textDim
+                            elide: Text.ElideRight
+                            font.bold: true
+                            color: ifRow.modelData.name === Link.airIface ? Theme.down
+                                   : ifRow.modelData.name === Link.groundIface ? Theme.up : Theme.text
                         }
-                        Label { text: modelData.kind; Layout.preferredWidth: 60; color: Theme.textDim }
+                        Label {
+                            Layout.preferredWidth: 78
+                            text: ifRow.lv.carrier === 1 ? "● linked" : ifRow.lv.carrier === 0 ? "○ unplugged" : "– down"
+                            color: ifRow.lv.carrier === 1 ? Theme.ok : ifRow.lv.carrier === 0 ? Theme.danger : Theme.textDim
+                        }
+                        Label {
+                            Layout.preferredWidth: 62
+                            text: ifRow.lv.speedMbps > 0 ? (ifRow.lv.speedMbps >= 1000 ? ifRow.lv.speedMbps / 1000 + " G" : ifRow.lv.speedMbps + " M") : "–"
+                            color: Theme.textDim
+                        }
+                        Label {
+                            Layout.preferredWidth: 130
+                            text: Theme.rate(ifRow.lv.rxKbps || 0) + " / " + Theme.rate(ifRow.lv.txKbps || 0)
+                            color: (ifRow.lv.rxKbps || 0) + (ifRow.lv.txKbps || 0) > 1 ? Theme.text : Theme.textDim
+                            font.pixelSize: 11
+                        }
                         Label {
                             Layout.fillWidth: true
                             elide: Text.ElideRight
-                            text: [modelData.addresses,
-                                   modelData.master ? "master " + modelData.master : "",
-                                   modelData.defaultRoute ? "default route" : "",
-                                   modelData.ssh ? "SSH" : ""].filter(s => s).join(" · ")
-                            color: (modelData.defaultRoute || modelData.ssh) ? Theme.warn : Theme.text
+                            text: [ifRow.modelData.name === Link.groundIface && Link.mode === "bridge" ? "ground" : "",
+                                   ifRow.modelData.name === Link.airIface && Link.mode === "bridge" ? "vehicle side" : "",
+                                   ifRow.modelData.kind !== "ether" ? ifRow.modelData.kind : "",
+                                   ifRow.modelData.addresses,
+                                   ifRow.modelData.master ? "master " + ifRow.modelData.master : "",
+                                   ifRow.modelData.defaultRoute ? "default route" : "",
+                                   ifRow.modelData.ssh ? "SSH" : ""].filter(s => s).join(" · ")
+                            color: (ifRow.modelData.defaultRoute || ifRow.modelData.ssh) ? Theme.warn : Theme.text
                         }
                     }
                 }
@@ -276,6 +334,75 @@ Item {
                 }
             }
             Label { text: "Continue anyway?" }
+        }
+    }
+
+    // Unplug-to-identify: the port whose cable is pulled is the one asked for.
+    Dialog {
+        id: identifyDialog
+        objectName: "identifyDialog"
+        property string role: "air"
+        readonly property string roleText: role === "air" ? "the vehicle" : "the ground PC"
+        // Usable physical ports, plus the ones already chosen (they may be virtual in a test setup).
+        readonly property var candidates: root.usableIfaces.filter(n => root.inUse(n) || (Sys.live[n] && Sys.live[n].physical))
+        function openFor(r) { role = r; Sys.startIdentify(candidates); open() }
+        function use(n) {
+            if (role === "air") {
+                if (Link.groundIface === n) Link.groundIface = ""
+                Link.airIface = n
+            } else {
+                if (Link.airIface === n) Link.airIface = ""
+                Link.groundIface = n
+            }
+            close()
+        }
+        title: "Identify the port to " + roleText
+        modal: true
+        focus: true
+        parent: Overlay.overlay
+        anchors.centerIn: parent
+        width: 480
+        onClosed: Sys.cancelIdentify()
+        footer: DialogButtonBox {
+            Button {
+                visible: Sys.identifyState === "found"
+                text: "Use " + Sys.identified
+                highlighted: true
+                onClicked: identifyDialog.use(Sys.identified)
+            }
+            Button {
+                visible: Sys.identifyState === "ambiguous" || Sys.identifyState === "found"
+                text: "Try again"
+                onClicked: Sys.startIdentify(identifyDialog.candidates)
+            }
+            Button { text: "Cancel"; onClicked: identifyDialog.close() }
+        }
+        ColumnLayout {
+            anchors.fill: parent
+            spacing: 8
+            Label {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                font.pixelSize: 14
+                text: Sys.identifyWatched.length === 0
+                      ? "No port has a link right now. Plug the cables in first, then try again."
+                      : Sys.identifyState === "waiting"
+                        ? "Unplug the cable going to " + identifyDialog.roleText + ". Waiting for a port to lose its link…"
+                      : Sys.identifyState === "found"
+                        ? Sys.identified + " lost its link: that is the port to " + identifyDialog.roleText
+                          + ". You can plug the cable back in."
+                      : "More than one port lost its link (" + Sys.identifyLost.join(", ") + "). Plug them back in and try again."
+            }
+            Repeater {
+                model: Sys.identifyWatched
+                delegate: Label {
+                    required property string modelData
+                    readonly property var lv: Sys.live[modelData] || ({})
+                    text: (lv.carrier === 1 ? "● " : "○ ") + modelData + (lv.carrier === 1 ? "  linked" : "  no link")
+                    color: lv.carrier === 1 ? Theme.ok : Theme.danger
+                    font.bold: modelData === Sys.identified
+                }
+            }
         }
     }
 }

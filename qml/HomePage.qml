@@ -30,6 +30,8 @@ Item {
     component Node: Rectangle {
         property string title
         property string subtitle
+        property string iface
+        readonly property var lv: Sys.live[iface] || ({})
         radius: 6
         color: Theme.panelAlt
         border.color: Theme.border
@@ -44,6 +46,13 @@ Item {
                 text: parent.parent.subtitle
                 color: Theme.textDim
                 visible: text.length > 0
+            }
+            Label {
+                anchors.horizontalCenter: parent.horizontalCenter
+                visible: parent.parent.iface !== "" && parent.parent.lv.carrier !== undefined
+                text: parent.parent.lv.carrier === 1 ? "● cable in" : parent.parent.lv.carrier === 0 ? "○ cable unplugged" : "– interface down"
+                color: parent.parent.lv.carrier === 1 ? Theme.ok : Theme.danger
+                font.pixelSize: 11
             }
         }
     }
@@ -114,6 +123,7 @@ Item {
                 spacing: 12
                 Node {
                     title: root.bridge ? "Ground" : "This PC"
+                    iface: root.bridge ? Link.groundIface : Link.hostIface
                     subtitle: root.bridge ? (Link.groundIface || "no NIC chosen") : (Link.hostIface || "no NIC chosen")
                 }
                 ColumnLayout {
@@ -148,6 +158,7 @@ Item {
                 }
                 Node {
                     title: "Vehicle"
+                    iface: root.bridge ? Link.airIface : ""
                     subtitle: root.bridge ? (Link.airIface || "no NIC chosen") : "via " + (Link.hostIface || "?")
                 }
             }

@@ -243,7 +243,7 @@ Section {
         }
         Label {
             Layout.fillWidth: true
-            wrapMode: Text.WordWrap
+            elide: Text.ElideRight // a wrapped label here breaks the row's layout in Qt 6.4
             color: Theme.textDim
             text: Link.otherExcluded ? "Only matched classes are impaired." : "Everything not matched uses the link profile."
         }
