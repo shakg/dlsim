@@ -142,6 +142,7 @@ int main(int argc, char *argv[])
     });
     QObject::connect(&sockets, &SocketMonitor::failed, &notifications,
                      [&](const QString &err) { notifications.report("socket", err); });
+    QObject::connect(&link, &LinkController::cutChanged, &sockets, [&] { sockets.setLinkCut(link.isCut()); });
     // NetworkManager can take a bridge port back; say so once the bridge is up.
     QObject::connect(&link, &LinkController::appliedChanged, &notifications, [&] {
         if (!link.bridgeUp())

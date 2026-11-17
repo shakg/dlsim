@@ -107,7 +107,29 @@ Item {
 
             RowLayout {
                 Label { text: "Peer" }
+                // Peers from TCP traffic classes with an IP and port, plus "Other…".
+                BoundCombo {
+                    id: peerPick
+                    objectName: "peerPicker"
+                    readonly property var classes: Link.classes.filter(c => c.proto === "tcp" && c.ip && c.port > 0)
+                    readonly property string currentKey: Sockets.peerIp + ":" + Sockets.peerPort
+                    property bool other: false
+                    Layout.preferredWidth: 260
+                    enabled: !Sockets.running
+                    property string disabledReason: "Stop monitoring to change the peer"
+                    values: classes.map(c => c.ip + ":" + c.port).concat(["other"])
+                    labels: classes.map(c => (c.name || "TCP") + "  (" + c.ip + ":" + c.port + ")").concat(["Other…"])
+                    current: other || values.indexOf(currentKey) < 0 ? "other" : currentKey
+                    onPicked: (v) => {
+                        other = v === "other"
+                        if (!other) {
+                            Sockets.peerIp = v.split(":")[0]
+                            Sockets.peerPort = Number(v.split(":")[1])
+                        }
+                    }
+                }
                 TextField {
+                    visible: peerPick.current === "other"
                     Layout.preferredWidth: 120
                     text: Sockets.peerIp
                     placeholderText: "IPv4"
@@ -116,8 +138,9 @@ Item {
                     property string disabledReason: "Stop monitoring to change the peer"
                     onEditingFinished: Sockets.peerIp = text
                 }
-                Label { text: ":" }
+                Label { text: ":"; visible: peerPick.current === "other" }
                 TextField {
+                    visible: peerPick.current === "other"
                     Layout.preferredWidth: 60
                     text: Sockets.peerPort
                     selectByMouse: true
@@ -148,7 +171,49 @@ Item {
                 }
             }
 
+            // One plain-language line per socket.
+            Repeater {
+                model: Sockets.sockets
+                delegate: RowLayout {
+                    required property var modelData
+                    Layout.fillWidth: true
+                    spacing: 8
+                    Rectangle {
+                        width: 10; height: 10; radius: 5
+                        color: modelData.statusKind === "healthy" || modelData.statusKind === "recovered" ? Theme.ok
+                               : modelData.statusKind === "listening" || modelData.statusKind === "idle" ? Theme.textDim
+                               : modelData.statusKind === "stuck" || modelData.statusKind === "halfopen" ? Theme.danger
+                               : Theme.warn
+                    }
+                    Label {
+                        Layout.fillWidth: true
+                        elide: Text.ElideRight
+                        font.pixelSize: 14
+                        font.bold: modelData.statusKind !== "healthy"
+                        text: modelData.status
+                        color: modelData.statusKind === "stuck" || modelData.statusKind === "halfopen" ? "#ff8a80" : Theme.text
+                    }
+                    Label { text: modelData.local + " → " + modelData.peer; color: Theme.textDim }
+                }
+            }
+            Label {
+                visible: Sockets.sockets.length === 0
+                color: Theme.textDim
+                text: Sockets.running ? "No TCP connection to " + Sockets.peerIp + ":" + Sockets.peerPort + " right now"
+                                      : "Pick the peer and press Start to watch its TCP connections."
+            }
+            Button {
+                id: detailsToggle
+                property bool open: UiSettings.flag("socketDetails", false)
+                flat: true
+                text: (open ? "▾" : "▸") + " Details: raw ss values and chart"
+                onClicked: { open = !open; UiSettings.setValue("socketDetails", open) }
+            }
+
+            Item { Layout.fillHeight: true; visible: !detailsToggle.open }
+
             RowLayout {
+                visible: detailsToggle.open
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 spacing: 6
@@ -207,7 +272,7 @@ Item {
                             anchors.centerIn: parent
                             visible: sockList.count === 0
                             color: Theme.textDim
-                            text: Sockets.running ? "No matching TCP sockets" : "Enter the peer and press Start"
+                            text: Sockets.running ? "No matching TCP sockets" : "Pick the peer and press Start"
                         }
                     }
                 }

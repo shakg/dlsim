@@ -275,9 +275,16 @@ with **Fade** and **Fade back**) and **Random dropouts** switch are quick action
 
 **Monitor.** 1 Hz statistics from `tc -s -j qdisc show` per direction:
 throughput, packets/s, drops/s, backlog, total drops and overlimits, with live
-charts. Below, the **TCP socket monitor**: enter the peer IP and port and press
-Start. It polls `ss -tnoi` for `dst IP dport = :PORT` and `src IP sport = :PORT`
-at 1 Hz and shows state, Recv-Q/Send-Q, rto, rtt, retransmits, backoff and the
+charts. Below, the **TCP socket monitor**: pick the peer from your TCP traffic
+classes (or *Other…* to type IP and port) and press Start. Each connection
+gets a plain status line: *Healthy · RTT 42 ms*, *Stuck · waiting on
+retransmit timer, next try in 12.3 s (backoff 5)*, *Stuck · the peer's receive
+window is zero*, *Possibly half-open · ESTAB, no data acknowledged for 40 s*,
+*Idle*, *Connecting*, *Listening*, and after a RESTORE or outage end
+*Recovered 23.4 s after link was restored* (time from the restore to the
+first data acknowledged after it; also logged). The rules are in
+`src/core/SocketHealth.h`. It polls `ss -tnoi` for `dst IP dport = :PORT` and `src IP sport = :PORT`
+at 1 Hz. **Details** shows the raw state, Recv-Q/Send-Q, rto, rtt, retransmits, backoff and the
 timer (`on` = retransmit, `keepalive`, `persist`) with its countdown. The chart
 plots RTO, backoff and total retransmits of one socket over time. Statistics
 and socket history export to CSV.
