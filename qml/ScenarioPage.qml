@@ -8,6 +8,8 @@ Item {
     id: root
     property string selectedScenario: Presets.scenarioNames.length > 0 ? Presets.scenarioNames[0] : ""
 
+    property bool lastReportShown: false
+    Connections { target: Reports; function onReportReady() { root.lastReportShown = true } }
     readonly property bool hasSelection: Presets.scenarioNames.indexOf(selectedScenario) >= 0
 
     Component.onCompleted: if (Scenario.steps.length === 0 && selectedScenario) Scenario.load(Presets.scenario(selectedScenario))
@@ -154,6 +156,13 @@ Item {
                     property string disabledReason: "Select a scenario"
                     onClicked: root.ApplicationWindow.window.askSave("Export scenario", ["Scenario (*.json)"],
                                    (url) => Presets.exportScenario(root.selectedScenario, url))
+                }
+                Button {
+                    objectName: "reportsButton"
+                    text: "Reports…"
+                    onClicked: reportsDialog.open()
+                    ToolTip.visible: hovered && enabled
+                    ToolTip.text: "Reports of earlier runs"
                 }
                 Button {
                     text: "New…"
@@ -382,6 +391,17 @@ Item {
                 color: Theme.danger
                 text: "Can't play: " + Scenario.playBlockedReason
             }
+            // After a run: its report.
+            RowLayout {
+                visible: Reports.reports.length > 0 && Scenario.state === "stopped" && root.lastReportShown
+                Label {
+                    text: "Last run: " + (Reports.reports[0] ? Reports.reports[0].name + " · " + Reports.reports[0].when
+                                          + (Reports.reports[0].completed ? "" : " · stopped early") : "")
+                    color: Theme.textDim
+                }
+                Button { text: "Open report"; onClicked: Reports.openReport(Reports.reports[0].html) }
+                Button { text: "All reports…"; onClicked: reportsDialog.open() }
+            }
             Label {
                 visible: !Link.active
                 color: Theme.warn
@@ -586,7 +606,8 @@ Item {
         Component {
             id: numberField
             TextField {
-                text: parent ? parent.value : ""
+                // Set once: a binding would rewrite the text while typing.
+                Component.onCompleted: text = parent ? parent.value : ""
                 selectByMouse: true
                 validator: DoubleValidator { bottom: 0.1; top: 86400; locale: "C" }
                 onTextEdited: if (acceptableInput) templateDialog.setValue(parent.param.key, Number(text))
@@ -595,12 +616,86 @@ Item {
         Component {
             id: listField
             TextField {
-                text: parent ? (parent.value || []).join(", ") : ""
+                Component.onCompleted: text = parent ? (parent.value || []).join(", ") : ""
                 selectByMouse: true
                 placeholderText: "e.g. 3, 10, 30"
                 validator: RegularExpressionValidator { regularExpression: /[0-9., ]*/ }
                 onTextEdited: templateDialog.setValue(parent.param.key,
                     text.split(/[ ,]+/).map(Number).filter(v => v > 0))
+            }
+        }
+    }
+
+    Dialog {
+        id: reportsDialog
+        objectName: "reportsDialog"
+        title: "Run reports"
+        modal: true
+        focus: true
+        parent: Overlay.overlay
+        anchors.centerIn: parent
+        width: Math.min(820, parent ? parent.width - 40 : 820)
+        height: Math.min(520, parent ? parent.height - 40 : 520)
+        standardButtons: Dialog.Close
+        ColumnLayout {
+            anchors.fill: parent
+            Label {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                color: Theme.textDim
+                text: "A report is saved when a scenario finishes or is stopped: timeline, outages with dropped packets "
+                      + "and TCP recovery times, and charts, in one HTML page that works offline."
+            }
+            ListView {
+                id: reportList
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                clip: true
+                spacing: 4
+                model: Reports.reports
+                ScrollBar.vertical: ScrollBar {}
+                Label {
+                    anchors.centerIn: parent
+                    visible: reportList.count === 0
+                    color: Theme.textDim
+                    text: "No reports yet. Play a scenario; the report appears when it ends."
+                }
+                delegate: Rectangle {
+                    required property var modelData
+                    width: reportList.width - 10
+                    height: 40
+                    radius: 3
+                    color: Theme.panelAlt
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: 8
+                        anchors.rightMargin: 4
+                        Label { text: modelData.name; font.bold: true; Layout.preferredWidth: 220; elide: Text.ElideRight }
+                        Label {
+                            Layout.fillWidth: true
+                            elide: Text.ElideRight
+                            color: Theme.textDim
+                            text: modelData.when + " · " + root.fmt(modelData.durationS) + " · " + modelData.outages
+                                  + (modelData.outages === 1 ? " outage" : " outages") + (modelData.completed ? "" : " · stopped early")
+                        }
+                        Button { text: "Open"; onClicked: Reports.openReport(modelData.html) }
+                        Button {
+                            text: "Save page…"
+                            onClicked: root.ApplicationWindow.window.askSave("Save report", ["HTML (*.html)"],
+                                                                             (url) => Reports.exportHtml(modelData.html, url))
+                        }
+                        Button {
+                            text: "Save data (.zip)…"
+                            onClicked: root.ApplicationWindow.window.askSave("Save report data", ["Zip (*.zip)"],
+                                                                             (url) => Reports.exportCsvZip(modelData.json, url))
+                        }
+                        ToolButton {
+                            text: "✕"
+                            onClicked: root.ApplicationWindow.window.askConfirm("Delete report", "Delete the report of '"
+                                + modelData.name + "' (" + modelData.when + ")?", "Delete", () => Reports.deleteReport(modelData.json))
+                        }
+                    }
+                }
             }
         }
     }

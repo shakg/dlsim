@@ -12,6 +12,7 @@ qt_add_executable(dlsim
     SystemInfo.h SystemInfo.cpp
     UiSettings.h
     Notifications.h Notifications.cpp
+    RunRecorder.h RunRecorder.cpp
 )
 
 target_compile_definitions(dlsim PRIVATE DLSIM_HELPER_INSTALL_PATH="${DLSIM_HELPER_INSTALL_PATH}")

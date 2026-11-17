@@ -5,6 +5,7 @@
 #include "LinkController.h"
 #include "Notifications.h"
 #include "PresetStore.h"
+#include "RunRecorder.h"
 #include "ScenarioEngine.h"
 #include "SocketMonitor.h"
 #include "StatsPoller.h"
@@ -132,6 +133,12 @@ int main(int argc, char *argv[])
     SocketMonitor sockets(&helper, &log);
     UiSettings uiSettings;
     Notifications notifications;
+    RunRecorder recorder(&scenario, &link, &stats, &sockets, &log);
+    QObject::connect(&recorder, &RunRecorder::reportReady, &notifications, [&](const QString &name, const QString &html) {
+        notifications.add("info", QStringLiteral("Run report ready: %1").arg(name),
+                          QStringLiteral("Timeline, outages, recovery times and charts in one page."), {},
+                          "open-report", QStringLiteral("Open report"), html);
+    });
 
     // Failures become notifications with a cause and a fix.
     QObject::connect(&link, &LinkController::errorOccurred, &notifications,
@@ -167,6 +174,7 @@ int main(int argc, char *argv[])
     qmlRegisterSingletonInstance("DLSim", 1, 0, "Sockets", &sockets);
     qmlRegisterSingletonInstance("DLSim", 1, 0, "UiSettings", &uiSettings);
     qmlRegisterSingletonInstance("DLSim", 1, 0, "Notifications", &notifications);
+    qmlRegisterSingletonInstance("DLSim", 1, 0, "Reports", &recorder);
 
     QObject::connect(&app, &QCoreApplication::aboutToQuit, [&] {
         scenario.stop();

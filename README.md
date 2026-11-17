@@ -291,6 +291,14 @@ Templates are data: `presets/templates.json`, plus your own in
 `~/.config/dlsim/templates/*.json` (same format: `params`, `steps` with
 `$param` values and `forEach` over a list, optional derived `presets`).
 
+When a scenario finishes or is stopped, DLSim saves a **run report** in
+`~/.config/dlsim/reports/`: scenario, times and setup, the timeline with
+outages marked, each outage's length, dropped packets and the recovery time of
+every tracked TCP socket, and charts of throughput, drops and RTO/backoff, in
+one HTML page with no external assets. **Reports…** lists recent runs to open
+again, save the page, or save the raw data (stats, sockets, log) as a zip of
+CSVs.
+
 The manual **Gradual change** (current → preset over T seconds at 1–10 Hz,
 with **Fade** and **Fade back**) and **Random dropouts** switch are quick actions on Home.
 

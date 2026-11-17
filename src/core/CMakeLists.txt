@@ -9,6 +9,8 @@ add_library(dlsim_core STATIC
     ScenarioCurve.h ScenarioCurve.cpp
     SocketHealth.h SocketHealth.cpp
     NicInfo.h NicInfo.cpp
+    ZipWriter.h ZipWriter.cpp
+    RunReport.h RunReport.cpp
 )
 target_include_directories(dlsim_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(dlsim_core PUBLIC Qt6::Core)

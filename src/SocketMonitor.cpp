@@ -121,9 +121,11 @@ void SocketMonitor::process(const QList<TcpSocketInfo> &socks)
             h.linkRestored(m_restoredAt);
         const bool waiting = h.waitingForRecovery();
         h.update(s, t);
-        if (waiting && !h.waitingForRecovery())
+        if (waiting && !h.waitingForRecovery()) {
             m_log->log("socket", QStringLiteral("%1 recovered %2 s after the link was restored")
                                      .arg(s.key()).arg(h.lastRecoveryS(), 0, 'f', 1));
+            Q_EMIT recovered(s.key(), h.lastRecoveryS());
+        }
         row["status"] = h.text();
         row["statusKind"] = h.kind();
         row["recoveryS"] = h.lastRecoveryS();

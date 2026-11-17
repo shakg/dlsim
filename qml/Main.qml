@@ -83,7 +83,9 @@ ApplicationWindow {
             Sys.refresh()
         else if (action === "copy-command")
             Notifications.copyToClipboard(arg)
-        if (action !== "copy-command" && id !== undefined)
+        else if (action === "open-report")
+            Reports.openReport(arg)
+        if (action !== "copy-command" && action !== "open-report" && id !== undefined)
             Notifications.dismiss(id)
     }
 
@@ -398,7 +400,7 @@ ApplicationWindow {
                                 height: ncol.implicitHeight + 10
                                 radius: 3
                                 color: Theme.panelAlt
-                                border.color: modelData.level === "error" ? Theme.danger : Theme.warn
+                                border.color: modelData.level === "error" ? Theme.danger : modelData.level === "warning" ? Theme.warn : Theme.accent
                                 opacity: modelData.dismissed ? 0.75 : 1
                                 ColumnLayout {
                                     id: ncol
@@ -410,7 +412,7 @@ ApplicationWindow {
                                             Layout.fillWidth: true
                                             wrapMode: Text.WordWrap
                                             font.bold: true
-                                            color: nrow.modelData.level === "error" ? "#ff8a80" : Theme.warn
+                                            color: nrow.modelData.level === "error" ? "#ff8a80" : nrow.modelData.level === "warning" ? Theme.warn : Theme.accent
                                             text: nrow.modelData.title + (nrow.modelData.count > 1 ? "  (×" + nrow.modelData.count + ")" : "")
                                         }
                                     }

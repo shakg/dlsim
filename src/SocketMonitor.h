@@ -53,6 +53,7 @@ Q_SIGNALS:
     void runningChanged();
     void updated();
     void failed(const QString &error); // on the first failure after a success
+    void recovered(const QString &socket, double seconds); // data acknowledged again after a restore
 
 private:
     struct Point {
