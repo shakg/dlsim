@@ -72,6 +72,7 @@ ApplicationWindow {
         property var callback
         property string message
         property string acceptText: "OK"
+        property bool infoOnly: false
         modal: true
         parent: Overlay.overlay
         anchors.centerIn: parent
@@ -80,7 +81,7 @@ ApplicationWindow {
         onRejected: callback = null
         footer: DialogButtonBox {
             Button { text: confirmDialog.acceptText; DialogButtonBox.buttonRole: DialogButtonBox.AcceptRole }
-            Button { text: "Cancel"; DialogButtonBox.buttonRole: DialogButtonBox.RejectRole }
+            Button { text: "Cancel"; visible: !confirmDialog.infoOnly; DialogButtonBox.buttonRole: DialogButtonBox.RejectRole }
         }
         Label {
             width: parent.width
@@ -93,6 +94,15 @@ ApplicationWindow {
         confirmDialog.message = message
         confirmDialog.acceptText = acceptText
         confirmDialog.callback = cb
+        confirmDialog.infoOnly = false
+        confirmDialog.open()
+    }
+    function showInfo(title, message) {
+        confirmDialog.title = title
+        confirmDialog.message = message
+        confirmDialog.acceptText = "OK"
+        confirmDialog.callback = null
+        confirmDialog.infoOnly = true
         confirmDialog.open()
     }
 

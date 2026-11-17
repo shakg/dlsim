@@ -32,6 +32,8 @@ class ScenarioEngine : public QObject
     // Name the timeline was loaded from or last saved as; empty for a new one.
     Q_PROPERTY(QString savedName READ savedName NOTIFY modifiedChanged)
     Q_PROPERTY(int loopCount READ loopCount NOTIFY progressChanged)
+    // Why Play is refused (e.g. a step names a missing preset); empty when it can play.
+    Q_PROPERTY(QString playBlockedReason READ playBlockedReason NOTIFY validityChanged)
     // Random dropouts
     Q_PROPERTY(bool dropoutsEnabled READ dropoutsEnabled WRITE setDropoutsEnabled NOTIFY dropoutsChanged)
     Q_PROPERTY(double meanIntervalS READ meanIntervalS WRITE setMeanIntervalS NOTIFY dropoutsChanged)
@@ -58,6 +60,7 @@ public:
     int loopCount() const { return m_loopCount; }
     bool modified() const { return m_modified; }
     QString savedName() const { return m_savedName; }
+    QString playBlockedReason() const;
     void setName(const QString &n);
     void setLoop(bool v);
 
@@ -101,6 +104,7 @@ Q_SIGNALS:
     void progressChanged();
     void dropoutsChanged();
     void fadeChanged();
+    void validityChanged();
 
 private:
     enum class State { Stopped, Playing, Paused };

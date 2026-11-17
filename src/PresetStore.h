@@ -47,6 +47,8 @@ public:
     Q_INVOKABLE bool deleteScenario(const QString &name);
     Q_INVOKABLE QString importScenario(const QUrl &file);
     Q_INVOKABLE bool exportScenario(const QString &name, const QUrl &file);
+    // Preset names used by the scenario's preset/fade steps that don't exist, in step order, unique.
+    Q_INVOKABLE QStringList missingPresets(const QVariantMap &scenario) const;
 
 Q_SIGNALS:
     void presetsChanged();

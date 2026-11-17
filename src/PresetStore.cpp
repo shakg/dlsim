@@ -316,3 +316,17 @@ bool PresetStore::exportScenario(const QString &name, const QUrl &file)
     m.remove("builtin");
     return writeJson(Kind::Scenario, localPath(file), QJsonObject::fromVariantMap(m));
 }
+
+QStringList PresetStore::missingPresets(const QVariantMap &scenario) const
+{
+    QStringList missing;
+    for (const QVariant &v : scenario.value("steps").toList()) {
+        const QVariantMap s = v.toMap();
+        if (s.value("type").toString() == "outage")
+            continue;
+        const QString p = s.value("preset").toString();
+        if (!missing.contains(p) && preset(p).isEmpty())
+            missing << p;
+    }
+    return missing;
+}

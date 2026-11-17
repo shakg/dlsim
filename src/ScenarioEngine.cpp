@@ -18,6 +18,22 @@ ScenarioEngine::ScenarioEngine(LinkController *link, PresetStore *presets, Event
     m_timer.setInterval(kTickMs);
     m_timer.setTimerType(Qt::PreciseTimer);
     connect(&m_timer, &QTimer::timeout, this, &ScenarioEngine::tick);
+    connect(this, &ScenarioEngine::stepsChanged, this, &ScenarioEngine::validityChanged);
+    connect(presets, &PresetStore::presetsChanged, this, &ScenarioEngine::validityChanged);
+}
+
+QString ScenarioEngine::playBlockedReason() const
+{
+    if (m_steps.isEmpty())
+        return QStringLiteral("Add a step first");
+    const QStringList missing = m_presets->missingPresets(toMap());
+    if (missing.isEmpty())
+        return {};
+    QStringList quoted;
+    for (const QString &m : missing)
+        quoted << (m.isEmpty() ? QStringLiteral("(none chosen)") : "'" + m + "'");
+    return QStringLiteral("Preset%1 not found: %2. Pick another preset for the red steps.")
+        .arg(missing.size() > 1 ? "s" : "", quoted.join(", "));
 }
 
 QString ScenarioEngine::state() const
@@ -147,8 +163,13 @@ void ScenarioEngine::setStepField(int index, const QString &key, const QVariant 
 
 void ScenarioEngine::play()
 {
-    if (m_steps.isEmpty())
-        return;
+    if (m_state == State::Stopped) {
+        const QString blocked = playBlockedReason();
+        if (!blocked.isEmpty()) {
+            m_log->log("error", QStringLiteral("scenario '%1' not started: %2").arg(m_name, blocked));
+            return;
+        }
+    }
     if (m_state == State::Paused) {
         m_state = State::Playing;
         m_log->log("scenario", QStringLiteral("'%1' resumed").arg(m_name));

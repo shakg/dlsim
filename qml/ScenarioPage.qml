@@ -121,7 +121,16 @@ Item {
                     onClicked: root.unlessUnsaved(() => root.ApplicationWindow.window.askOpen(
                         "Import scenario", ["Scenario (*.json)"], (url) => {
                             const n = Presets.importScenario(url)
-                            if (n) { root.selectedScenario = n; Scenario.load(Presets.scenario(n)) }
+                            if (!n)
+                                return
+                            root.selectedScenario = n
+                            Scenario.load(Presets.scenario(n))
+                            const missing = Presets.missingPresets(Presets.scenario(n))
+                            if (missing.length > 0)
+                                root.ApplicationWindow.window.showInfo("Missing presets",
+                                    "'" + n + "' uses presets that don't exist here:\n\n• "
+                                    + missing.map(m => m || "(none chosen)").join("\n• ")
+                                    + "\n\nImport or create them, or pick other presets for the red steps.")
                         }))
                 }
                 Button {
@@ -167,11 +176,15 @@ Item {
                     required property var modelData
                     required property int index
                     readonly property bool current: index === Scenario.currentStep
+                    readonly property bool missingPreset: modelData.type !== "outage"
+                                                         && Presets.presetNames.indexOf(modelData.preset) < 0
                     width: steps.width - 10
-                    height: 36
+                    height: missingPreset ? 58 : 36
                     radius: 3
-                    color: current ? "#21406b" : Theme.panelAlt
-                    border.color: modelData.type === "outage" ? Theme.danger : modelData.type === "fade" ? "#ce93d8" : Theme.border
+                    color: current ? "#21406b" : missingPreset ? "#3a2226" : Theme.panelAlt
+                    border.color: modelData.type === "outage" || missingPreset ? Theme.danger
+                                  : modelData.type === "fade" ? "#ce93d8" : Theme.border
+                    border.width: missingPreset ? 2 : 1
 
                     Rectangle {
                         visible: stepRow.current
@@ -180,8 +193,17 @@ Item {
                         width: parent.width * Math.min(1, Scenario.stepElapsed / Math.max(0.1, stepRow.modelData.durationS))
                         color: Theme.accent
                     }
+                    Label {
+                        visible: stepRow.missingPreset
+                        x: 36
+                        y: 36
+                        color: Theme.danger
+                        text: stepRow.modelData.preset ? "Preset '" + stepRow.modelData.preset + "' not found"
+                                                       : "No preset chosen"
+                    }
                     RowLayout {
-                        anchors.fill: parent
+                        anchors { left: parent.left; right: parent.right; top: parent.top }
+                        height: 36
                         anchors.leftMargin: 6
                         anchors.rightMargin: 4
                         Label { text: (stepRow.index + 1) + "."; Layout.preferredWidth: 24; font.bold: stepRow.current }
@@ -197,7 +219,7 @@ Item {
                             visible: stepRow.modelData.type !== "outage"
                             values: Presets.presetNames
                             current: stepRow.modelData.preset
-                            displayText: currentIndex < 0 ? (stepRow.modelData.preset || "(choose preset)") + " ?" : currentText
+                            displayText: currentIndex < 0 ? (stepRow.modelData.preset || "(choose preset)") : currentText
                             onPicked: (v) => Scenario.setStepField(stepRow.index, "preset", v)
                         }
                         Label {
@@ -235,11 +257,24 @@ Item {
             }
             RowLayout {
                 Layout.topMargin: 4
-                Button {
-                    text: Scenario.state === "playing" ? "Pause" : Scenario.state === "paused" ? "Resume" : "Play"
-                    highlighted: Scenario.state !== "playing"
-                    enabled: Scenario.steps.length > 0
-                    onClicked: Scenario.state === "playing" ? Scenario.pause() : Scenario.play()
+                // Wrapper so the tooltip still shows while Play is disabled.
+                Item {
+                    readonly property string blocked: Scenario.state === "stopped" ? Scenario.playBlockedReason : ""
+                    implicitWidth: playButton.implicitWidth
+                    implicitHeight: playButton.implicitHeight
+                    Button {
+                        id: playButton
+                        objectName: "scenarioPlay"
+                        anchors.fill: parent
+                        text: Scenario.state === "playing" ? "Pause" : Scenario.state === "paused" ? "Resume" : "Play"
+                        highlighted: Scenario.state !== "playing"
+                        enabled: parent.blocked === ""
+                        onClicked: Scenario.state === "playing" ? Scenario.pause() : Scenario.play()
+                    }
+                    HoverHandler { id: playHover }
+                    ToolTip.visible: blocked !== "" && playHover.hovered
+                    ToolTip.text: blocked
+                    ToolTip.delay: 300
                 }
                 Button { text: "Stop"; enabled: Scenario.state !== "stopped"; onClicked: Scenario.stop() }
                 Label {
@@ -254,6 +289,13 @@ Item {
                             + (Scenario.loop ? " · loop " + (Scenario.loopCount + 1) : "")
                     color: Scenario.state === "playing" ? Theme.ok : Theme.textDim
                 }
+            }
+            Label {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                visible: Scenario.state === "stopped" && Scenario.steps.length > 0 && Scenario.playBlockedReason !== ""
+                color: Theme.danger
+                text: "Can't play: " + Scenario.playBlockedReason
             }
             Label {
                 visible: !Link.active

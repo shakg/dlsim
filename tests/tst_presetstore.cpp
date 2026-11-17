@@ -16,6 +16,7 @@ private Q_SLOTS:
     void clearErrors();
     void userPresetExists();
     void userScenarioExists();
+    void missingPresets();
 
 private:
     static QVariantMap scenario(const QString &name)
@@ -93,4 +94,21 @@ void TestPresetStore::userScenarioExists()
 }
 
 QTEST_GUILESS_MAIN(TestPresetStore)
+void TestPresetStore::missingPresets()
+{
+    PresetStore s;
+    QVERIFY(s.savePreset("Mine", "", {}, {}));
+    const QVariantList steps{
+        QVariantMap{{"type", "preset"}, {"preset", "Mine"}, {"durationS", 5}},
+        QVariantMap{{"type", "fade"}, {"preset", "Gone"}, {"durationS", 5}},
+        QVariantMap{{"type", "outage"}, {"preset", "Ignored"}, {"durationS", 5}},
+        QVariantMap{{"type", "preset"}, {"preset", "Gone"}, {"durationS", 5}},
+        QVariantMap{{"type", "preset"}, {"preset", s.presetNames().first()}, {"durationS", 5}},
+        QVariantMap{{"type", "preset"}, {"preset", "Also gone"}, {"durationS", 5}},
+    };
+    QCOMPARE(s.missingPresets({{"steps", steps}}), (QStringList{"Gone", "Also gone"}));
+    QVERIFY(s.deletePreset("Mine"));
+    QCOMPARE(s.missingPresets({{"steps", steps}}), (QStringList{"Mine", "Gone", "Also gone"}));
+}
+
 #include "tst_presetstore.moc"
