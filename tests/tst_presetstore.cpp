@@ -18,6 +18,7 @@ private Q_SLOTS:
     void userScenarioExists();
     void missingPresets();
     void renamePreset();
+    void scenarioStepTypes();
 
 private:
     static QVariantMap scenario(const QString &name)
@@ -126,6 +127,30 @@ void TestPresetStore::renamePreset()
     QCOMPARE(s.preset("Renamed").value("description").toString(), QStringLiteral("desc"));
     QCOMPARE(s.preset("Renamed").value("uplink").toMap().value("delayMs").toDouble(), 40.0);
     QVERIFY(!s.userPresetExists("Mine"));
+}
+
+void TestPresetStore::scenarioStepTypes()
+{
+    PresetStore s;
+    const QVariantList steps{
+        QVariantMap{{"type", "preset"}, {"preset", "Good LOS"}, {"durationS", 5}},
+        QVariantMap{{"type", "fade"}, {"preset", "Fringe"}, {"durationS", 5}},
+        QVariantMap{{"type", "outage"}, {"durationS", 5}},
+        QVariantMap{{"type", "dropouts"}, {"durationS", 60}, {"meanIntervalS", 8}, {"meanDurationS", 2}, {"seed", 99}},
+        QVariantMap{{"type", "dropouts"}, {"durationS", 60}}, // defaults
+        QVariantMap{{"type", "bogus"}, {"durationS", 5}},
+    };
+    QVERIFY(s.saveScenario({{"name", "Types"}, {"steps", steps}}));
+    const QVariantList got = s.scenario("Types").value("steps").toList();
+    QCOMPARE(got.size(), 5); // unknown type dropped, old ones kept
+    const QVariantMap d = got[3].toMap();
+    QCOMPARE(d.value("type").toString(), QStringLiteral("dropouts"));
+    QCOMPARE(d.value("meanIntervalS").toDouble(), 8.0);
+    QCOMPARE(d.value("meanDurationS").toDouble(), 2.0);
+    QCOMPARE(d.value("seed").toDouble(), 99.0);
+    QCOMPARE(got[4].toMap().value("meanIntervalS").toDouble(), 30.0);
+    QVERIFY(!got[4].toMap().contains("seed"));
+    QVERIFY(s.missingPresets({{"steps", got}}).isEmpty()); // dropouts need no preset
 }
 
 #include "tst_presetstore.moc"

@@ -11,6 +11,12 @@ Item {
     readonly property bool bridge: Link.mode === "bridge"
     readonly property bool clean: Link.validationErrors.length === 0
 
+    function fmt(s) {
+        s = Math.max(0, s)
+        const m = Math.floor(s / 60)
+        const r = s - 60 * m
+        return (m > 0 ? m + ":" + (r < 10 ? "0" : "") + r.toFixed(1) : r.toFixed(1) + " s")
+    }
     function lossy(p) { return p.lossModel === "gemodel" ? (p.geP || 0) > 0 : (p.lossPct || 0) > 0 }
     function arrowColor(p, base) {
         if (!Link.active) return Theme.border
@@ -202,6 +208,96 @@ Item {
                         onClicked: Scenario.state === "playing" ? Scenario.pause() : Scenario.play()
                     }
                     Button { text: "Open…"; onClicked: root.openTab(3) }
+                }
+            }
+        }
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 12
+
+            Section {
+                title: "Gradual change"
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignTop
+                Label {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    color: Theme.textDim
+                    text: "Ramps delay, jitter, loss and rate from the current profiles to a preset, "
+                          + "updating netem with tc qdisc change."
+                }
+                GridLayout {
+                    columns: 2
+                    Label { text: "To preset" }
+                    BoundCombo {
+                        id: fadeTarget
+                        property string chosen: "Fringe"
+                        Layout.fillWidth: true
+                        values: Presets.presetNames
+                        current: chosen
+                        displayText: currentIndex < 0 ? "(choose preset)" : currentText
+                        onPicked: (v) => chosen = v
+                    }
+                    Label { text: "Duration" }
+                    RowLayout {
+                        SpinBox { id: fadeSeconds; from: 1; to: 3600; value: 20; editable: true }
+                        Label { text: "s"; color: Theme.textDim }
+                    }
+                    Label { text: "Update rate" }
+                    RowLayout {
+                        SpinBox {
+                            from: 1; to: 10; editable: true
+                            value: Scenario.fadeRateHz
+                            onValueModified: { Scenario.fadeRateHz = value; value = Qt.binding(() => Scenario.fadeRateHz) }
+                        }
+                        Label { text: "Hz"; color: Theme.textDim }
+                    }
+                }
+                RowLayout {
+                    Button { text: "Fade"; highlighted: true; property string disabledReason: "Choose a preset to fade to"; enabled: fadeTarget.currentIndex >= 0; onClicked: Scenario.fadeTo(fadeTarget.chosen, fadeSeconds.value) }
+                    Button { text: "Fade back"; onClicked: Scenario.fadeBack() }
+                    Button { text: "Stop"; property string disabledReason: "No fade is running"; enabled: Scenario.fading; onClicked: Scenario.stopFade() }
+                }
+                ProgressBar {
+                    Layout.fillWidth: true
+                    value: Scenario.fadeProgress
+                    visible: Scenario.fading
+                }
+            }
+
+            Section {
+                title: "Random dropouts"
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignTop
+                Label {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    color: Theme.textDim
+                    text: "Poisson process: exponential time between outages and exponential outage length."
+                }
+                Switch {
+                    text: Scenario.dropoutsEnabled ? "Enabled" : "Disabled"
+                    checked: Scenario.dropoutsEnabled
+                    onToggled: { Scenario.dropoutsEnabled = checked; checked = Qt.binding(() => Scenario.dropoutsEnabled) }
+                }
+                ParamRow {
+                    Layout.fillWidth: true
+                    label: "Mean interval"; suffix: "s"; from: 1; to: 3600; logScale: true; decimals: 1
+                    value: Scenario.meanIntervalS
+                    onEdited: (v) => Scenario.meanIntervalS = v
+                }
+                ParamRow {
+                    Layout.fillWidth: true
+                    label: "Mean duration"; suffix: "s"; from: 0.1; to: 600; logScale: true; decimals: 1
+                    value: Scenario.meanDurationS
+                    onEdited: (v) => Scenario.meanDurationS = v
+                }
+                Label {
+                    visible: Scenario.dropoutsEnabled
+                    font.bold: true
+                    color: Scenario.inDropout ? Theme.danger : Theme.text
+                    text: (Scenario.inDropout ? "IN DROPOUT, restores in " : "Next dropout in ")
+                          + root.fmt(Scenario.dropoutCountdown) + " · count " + Scenario.dropoutCount
                 }
             }
         }

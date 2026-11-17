@@ -48,7 +48,8 @@ ColumnLayout {
 
     spacing: 4
     // Rows appear and disappear with the loss type; Qt 6.4 layouts don't always reflow on their own.
-    onSChanged: Qt.callLater(root.forceLayout)
+    function relayout() { root.spacing = 5; root.spacing = 4 } // forceLayout() needs Qt 6.5
+    onSChanged: Qt.callLater(relayout)
 
     Label { text: root.title; color: root.accent; font.bold: true; font.pixelSize: 14 }
 

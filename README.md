@@ -244,13 +244,16 @@ menu has Rename, Export and Delete (user presets). With **Apply edits immediatel
 within 150 ms; otherwise an **Unapplied changes · Apply · Discard** bar
 appears under the header.
 
-**Scenario.** A timeline of steps: *Profile* (switch to a preset), *Fade to*
-(ramp from the current profiles to a preset over the step's duration) and
-*Outage*. Play, pause, stop and loop, with the current step, step time and
-total time shown. On the right: a manual **Fade** (current → preset over T
-seconds at 1–10 Hz, plus **Fade back**) and **Random dropouts**: outages with
-exponentially distributed gaps and lengths (a Poisson process) around the
-mean interval and mean duration you set.
+**Scenario.** A timeline of steps: *Hold condition* (switch to a preset),
+*Gradually change to* (ramp from the current profiles to a preset over the
+step's duration), *Drop link* (100% loss) and *Random dropouts* (outages with
+exponentially distributed gaps and lengths, a Poisson process, around a mean
+interval and mean length, laid over the current condition). Play, pause, stop
+and loop, with the current step, step time and total time shown. New steps
+use the previous step's preset, else the active one.
+
+The manual **Gradual change** (current → preset over T seconds at 1–10 Hz,
+with **Fade** and **Fade back**) and **Random dropouts** switch are quick actions on Home.
 
 **Monitor.** 1 Hz statistics from `tc -s -j qdisc show` per direction:
 throughput, packets/s, drops/s, backlog, total drops and overlimits, with live
@@ -333,14 +336,18 @@ Preset format (missing fields take defaults):
 }
 ```
 
-Scenario format (`type` is `preset`, `fade` or `outage`; `preset` names a
-preset):
+Scenario format. `type` is `preset` (Hold condition), `fade` (Gradually
+change to), `outage` (Drop link) or `dropouts` (Random dropouts); `preset`
+names a preset. A `dropouts` step takes `meanIntervalS` and `meanDurationS`
+(defaults 30 and 3) and an optional `seed`: with a seed the step produces the
+same dropouts on every run.
 
 ```json
 { "name": "My test", "loop": false,
   "steps": [ { "type": "preset", "preset": "Good LOS", "durationS": 20 },
              { "type": "fade", "preset": "Fringe", "durationS": 30 },
-             { "type": "outage", "durationS": 10 } ] }
+             { "type": "outage", "durationS": 10 },
+             { "type": "dropouts", "durationS": 120, "meanIntervalS": 15, "meanDurationS": 2, "seed": 7 } ] }
 ```
 
 ## How it works

@@ -2,6 +2,7 @@
 // Driven by one 100 ms QTimer; fade updates are pushed at fadeRateHz.
 #pragma once
 
+#include "Dropouts.h"
 #include "Model.h"
 
 #include <QElapsedTimer>
@@ -154,6 +155,11 @@ private:
     Fade m_fade;
     Fade m_lastFade;
     int m_fadeRateHz = 10;
+
+    // Dropouts step: its schedule and whether the link is cut by it now.
+    QList<dlsim::DropoutWindow> m_stepDropouts;
+    bool m_inStepDropout = false;
+    void updateStepDropout();
 
     QTimer m_timer;
     QElapsedTimer m_clock;

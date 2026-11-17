@@ -105,13 +105,20 @@ QJsonObject PresetStore::normalizeScenario(const QJsonObject &o)
     for (const auto &v : o.value("steps").toArray()) {
         const QJsonObject s = v.toObject();
         QString type = s.value("type").toString();
-        if (type != "preset" && type != "outage" && type != "fade")
+        if (type != "preset" && type != "outage" && type != "fade" && type != "dropouts")
             continue;
-        steps.append(QJsonObject{
+        QJsonObject step{
             {"type", type},
             {"preset", s.value("preset").toString()},
             {"durationS", std::clamp(s.value("durationS").toDouble(10), 0.1, 86400.0)},
-        });
+        };
+        if (type == "dropouts") {
+            step["meanIntervalS"] = std::clamp(s.value("meanIntervalS").toDouble(30), 0.1, 86400.0);
+            step["meanDurationS"] = std::clamp(s.value("meanDurationS").toDouble(3), 0.1, 86400.0);
+            if (s.value("seed").toDouble() > 0) // fixed seed: the same dropouts on every run
+                step["seed"] = s.value("seed").toDouble();
+        }
+        steps.append(step);
     }
     return QJsonObject{
         {"name", o.value("name").toString().trimmed()},
@@ -346,7 +353,8 @@ QStringList PresetStore::missingPresets(const QVariantMap &scenario) const
     QStringList missing;
     for (const QVariant &v : scenario.value("steps").toList()) {
         const QVariantMap s = v.toMap();
-        if (s.value("type").toString() == "outage")
+        const QString type = s.value("type").toString();
+        if (type != "preset" && type != "fade")
             continue;
         const QString p = s.value("preset").toString();
         if (!missing.contains(p) && preset(p).isEmpty())

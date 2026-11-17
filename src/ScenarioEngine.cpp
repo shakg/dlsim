@@ -234,6 +234,15 @@ void ScenarioEngine::enterStep(int index)
                                .arg(dur));
     if (type == "outage") {
         m_link->setCutSource("scenario", true);
+    } else if (type == "dropouts") {
+        // The current condition stays; random outages are laid over it.
+        const double seedValue = s.value("seed").toDouble();
+        const quint32 seed = seedValue > 0 ? quint32(seedValue) : quint32(m_rng());
+        m_stepDropouts = dlsim::dropoutSchedule(seed, s.value("meanIntervalS", 30).toDouble(),
+                                                s.value("meanDurationS", 3).toDouble(), dur);
+        m_log->log("scenario", QStringLiteral("step %1: %2 random dropouts planned (seed %3)")
+                                   .arg(index + 1).arg(m_stepDropouts.size()).arg(seed));
+        updateStepDropout();
     } else {
         Profile up, down;
         if (!presetProfiles(preset, &up, &down)) {
@@ -255,6 +264,13 @@ void ScenarioEngine::leaveStep()
     const QString type = m_steps[m_current].toMap().value("type").toString();
     if (type == "outage")
         m_link->setCutSource("scenario", false);
+    if (type == "dropouts") {
+        m_stepDropouts.clear();
+        if (m_inStepDropout) {
+            m_inStepDropout = false;
+            m_link->setCutSource("scenario dropout", false);
+        }
+    }
     if (type == "fade" && m_fade.active) {
         // Land exactly on the target.
         m_link->applyProfilesLive(m_fade.toUp, m_fade.toDown, m_fade.label);
@@ -444,6 +460,7 @@ void ScenarioEngine::tick()
     if (m_state == State::Playing && m_current >= 0) {
         m_stepElapsedMs += dt;
         m_totalElapsedMs += dt;
+        updateStepDropout();
         const double dur = m_steps[m_current].toMap().value("durationS").toDouble() * 1000.0;
         if (m_stepElapsedMs >= dur) {
             leaveStep();
@@ -467,4 +484,21 @@ void ScenarioEngine::tick()
         }
     }
     Q_EMIT progressChanged();
+}
+
+void ScenarioEngine::updateStepDropout()
+{
+    if (m_stepDropouts.isEmpty() && !m_inStepDropout)
+        return;
+    const double t = m_stepElapsedMs / 1000.0;
+    bool in = false;
+    for (const auto &w : m_stepDropouts)
+        if (t >= w.startS && t < w.endS()) {
+            in = true;
+            break;
+        }
+    if (in == m_inStepDropout)
+        return;
+    m_inStepDropout = in;
+    m_link->setCutSource("scenario dropout", in);
 }
