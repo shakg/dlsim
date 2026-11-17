@@ -59,12 +59,12 @@ Item {
             Section {
                 title: "Preset"
                 Layout.fillWidth: true
-                ComboBox {
+                BoundCombo {
                     id: presetCombo
                     Layout.fillWidth: true
-                    model: Presets.presetNames
-                    currentIndex: Presets.presetNames.indexOf(root.selectedPreset)
-                    onActivated: (i) => root.selectedPreset = Presets.presetNames[i]
+                    values: Presets.presetNames
+                    current: root.selectedPreset
+                    onPicked: (v) => root.selectedPreset = v
                 }
                 Label {
                     Layout.fillWidth: true

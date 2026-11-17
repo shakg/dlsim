@@ -84,25 +84,25 @@ Item {
                     columnSpacing: 8
                     visible: Link.mode === "bridge"
                     Label { text: "Ground NIC" }
-                    ComboBox {
+                    BoundCombo {
                         Layout.fillWidth: true
                         enabled: !Link.active
-                        model: root.usableIfaces
-                        currentIndex: root.usableIfaces.indexOf(Link.groundIface)
+                        values: root.usableIfaces
+                        current: Link.groundIface
                         displayText: currentIndex < 0 ? (Link.groundIface || "(choose: faces the ground PC)") : currentText
-                        onActivated: (i) => Link.groundIface = root.usableIfaces[i]
+                        onPicked: (v) => Link.groundIface = v
                         ErrorFrame { show: !!root.errs.groundIface }
                     }
                     Item { visible: !!root.errs.groundIface; implicitWidth: 1 }
                     FieldError { msg: root.errs.groundIface || "" }
                     Label { text: "Air NIC" }
-                    ComboBox {
+                    BoundCombo {
                         Layout.fillWidth: true
                         enabled: !Link.active
-                        model: root.usableIfaces
-                        currentIndex: root.usableIfaces.indexOf(Link.airIface)
+                        values: root.usableIfaces
+                        current: Link.airIface
                         displayText: currentIndex < 0 ? (Link.airIface || "(choose: faces the vehicle)") : currentText
-                        onActivated: (i) => Link.airIface = root.usableIfaces[i]
+                        onPicked: (v) => Link.airIface = v
                         ErrorFrame { show: !!root.errs.airIface }
                     }
                     Item { visible: !!root.errs.airIface; implicitWidth: 1 }
@@ -111,13 +111,13 @@ Item {
                 RowLayout {
                     visible: Link.mode === "host"
                     Label { text: "NIC" }
-                    ComboBox {
+                    BoundCombo {
                         Layout.fillWidth: true
                         enabled: !Link.active
-                        model: root.usableIfaces
-                        currentIndex: root.usableIfaces.indexOf(Link.hostIface)
+                        values: root.usableIfaces
+                        current: Link.hostIface
                         displayText: currentIndex < 0 ? (Link.hostIface || "(choose)") : currentText
-                        onActivated: (i) => Link.hostIface = root.usableIfaces[i]
+                        onPicked: (v) => Link.hostIface = v
                         ErrorFrame { show: !!root.errs.hostIface }
                     }
                 }

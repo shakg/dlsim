@@ -89,11 +89,11 @@ Item {
             Layout.fillHeight: true
 
             RowLayout {
-                ComboBox {
+                BoundCombo {
                     Layout.preferredWidth: 200
-                    model: Presets.scenarioNames
-                    currentIndex: Presets.scenarioNames.indexOf(root.selectedScenario)
-                    onActivated: (i) => root.selectedScenario = Presets.scenarioNames[i]
+                    values: Presets.scenarioNames
+                    current: root.selectedScenario
+                    onPicked: (v) => root.selectedScenario = v
                 }
                 Button {
                     text: "Load"
@@ -323,11 +323,14 @@ Item {
                 GridLayout {
                     columns: 2
                     Label { text: "To preset" }
-                    ComboBox {
+                    BoundCombo {
                         id: fadeTarget
+                        property string chosen: "Fringe"
                         Layout.fillWidth: true
-                        model: Presets.presetNames
-                        Component.onCompleted: currentIndex = Math.max(0, Presets.presetNames.indexOf("Fringe"))
+                        values: Presets.presetNames
+                        current: chosen
+                        displayText: currentIndex < 0 ? "(choose preset)" : currentText
+                        onPicked: (v) => chosen = v
                     }
                     Label { text: "Duration" }
                     RowLayout {
@@ -345,7 +348,7 @@ Item {
                     }
                 }
                 RowLayout {
-                    Button { text: "Fade"; highlighted: true; onClicked: Scenario.fadeTo(fadeTarget.currentText, fadeSeconds.value) }
+                    Button { text: "Fade"; highlighted: true; enabled: fadeTarget.currentIndex >= 0; onClicked: Scenario.fadeTo(fadeTarget.chosen, fadeSeconds.value) }
                     Button { text: "Fade back"; onClicked: Scenario.fadeBack() }
                     Button { text: "Stop"; enabled: Scenario.fading; onClicked: Scenario.stopFade() }
                 }
