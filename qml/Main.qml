@@ -23,6 +23,14 @@ ApplicationWindow {
     readonly property int baseFont: Math.round(Math.max(13, UiSettings.systemFontPx()) * zoom)
     Binding { target: Theme; property: "fontBase"; value: win.baseFont }
     font.pixelSize: Theme.fontBase
+
+    QtObject {
+        id: pages
+        objectName: "pages"
+        readonly property int count: 5
+        property int currentIndex: 0
+        Component.onCompleted: currentIndex = Link.validationErrors.length === 0 ? 0 : 1
+    }
     // Color groups are set explicitly: a group-less assignment may be applied
     // after the disabled one and hide the disabled look.
     palette.window: Theme.bg
@@ -53,18 +61,8 @@ ApplicationWindow {
 
     // Log & commands panel: closed by default, state remembered.
     property bool panelOpen: UiSettings.flag("bottomPanelOpen", false)
-    property int unreadErrors: 0
     onPanelOpenChanged: {
         UiSettings.setValue("bottomPanelOpen", panelOpen)
-        if (panelOpen)
-            unreadErrors = 0
-    }
-    Connections {
-        target: Log
-        function onLogged(category, message) {
-            if (category === "error" && !win.panelOpen)
-                win.unreadErrors++
-        }
     }
 
     // ---------------------------------------------------------------- keyboard shortcuts
@@ -258,7 +256,15 @@ ApplicationWindow {
     header: Rectangle {
         height: Theme.s(64)
         color: Theme.panel
-        border.color: Theme.border
+        border.width: 0
+
+        Rectangle {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            height: 1
+            color: Theme.border
+        }
 
         RowLayout {
             anchors.fill: parent
@@ -266,27 +272,17 @@ ApplicationWindow {
             anchors.rightMargin: Theme.s(16)
             spacing: Theme.s(12)
 
-            ColumnLayout {
-                spacing: 0
-                Label { text: "DLSim"; font.pixelSize: Theme.fontBase + 5; font.bold: true }
-                RowLayout {
-                    spacing: 4
-                    Rectangle {
-                        width: 8; height: 8; radius: 4
-                        color: Helper.state === 2 ? Theme.ok : Helper.state === 1 ? Theme.warn : Theme.danger
-                    }
-                    Label { text: Helper.statusText; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
-                }
-            }
+            Label { text: "DLSim"; font.pixelSize: Theme.fontBase + 5; font.bold: true }
             Rectangle { width: 1; Layout.fillHeight: true; Layout.margins: 8; color: Theme.border }
             StateBadge { objectName: "headerStateBadge" }
             Label {
                 Layout.maximumWidth: Theme.s(360)
                 elide: Text.ElideRight
                 color: Theme.textDim
-                text: (Link.mode === "bridge" ? (Link.groundIface || "?") + " ⇄ " + (Link.airIface || "?")
-                                              : "Host " + (Link.hostIface || "?"))
-                      + " · " + (Link.activePreset || "(custom)")
+                text: Link.validationErrors.length > 0 ? "Setup needed"
+                      : (Link.mode === "bridge" ? Link.groundIface + " ⇄ " + Link.airIface
+                                                : "Host " + Link.hostIface)
+                      + " · " + (Link.activePreset || "Custom condition")
                       + (Scenario.dropoutsEnabled ? " · dropouts on" : "")
                       + (Link.outageRemaining > 0 ? " · outage " + Link.outageRemaining.toFixed(0) + " s" : "")
             }
@@ -313,6 +309,7 @@ ApplicationWindow {
                 Layout.preferredWidth: Theme.s(96)
                 text: running ? "Stop" : "Start"
                 highlighted: !running
+                emphasisColor: Theme.ok
                 enabled: running ? Helper.running && !Link.busy : win.startBlockedReason === ""
                 property string disabledReason: running ? (Link.busy ? "Busy: waiting for the helper"
                                                                      : "The privileged helper is not running")
@@ -333,6 +330,15 @@ ApplicationWindow {
                     id: moreMenu
                     y: moreButton.height
                     MenuItem {
+                        text: win.panelOpen ? "Hide log & commands" : "Show log & commands"
+                        onTriggered: win.panelOpen = !win.panelOpen
+                    }
+                    MenuItem {
+                        text: "Keyboard shortcuts"
+                        onTriggered: shortcutsDialog.open()
+                    }
+                    MenuSeparator {}
+                    MenuItem {
                         text: "Reset all…"
                         enabled: Helper.running && !Link.busy
                         onTriggered: win.askConfirm("Reset all",
@@ -345,6 +351,7 @@ ApplicationWindow {
             AppToolButton {
                 id: bell
                 objectName: "notificationsButton"
+                visible: Notifications.items.length > 0
                 text: "🔔"
                 font.pixelSize: Theme.fontBase + 3
                 onClicked: { notificationList.open(); Notifications.markRead() }
@@ -549,6 +556,57 @@ ApplicationWindow {
         onTapped: if (win.typing()) win.activeFocusItem.focus = false
     }
 
+    component NavButton: AbstractButton {
+        id: navButton
+        required property int pageIndex
+        required property url iconSource
+        checkable: true
+        checked: pages.currentIndex === pageIndex
+        implicitHeight: Theme.s(46)
+        padding: Theme.s(10)
+        onClicked: pages.currentIndex = pageIndex
+
+        contentItem: RowLayout {
+            spacing: Theme.s(11)
+            Image {
+                source: navButton.iconSource
+                sourceSize.width: Theme.s(20)
+                sourceSize.height: Theme.s(20)
+                Layout.preferredWidth: Theme.s(20)
+                Layout.preferredHeight: Theme.s(20)
+                opacity: navButton.checked ? 1 : navButton.hovered ? 0.85 : 0.62
+            }
+            Label {
+                Layout.fillWidth: true
+                text: navButton.text
+                color: navButton.checked ? Theme.text : Theme.textDim
+                font.weight: navButton.checked ? Font.DemiBold : Font.Normal
+            }
+            Label {
+                text: navButton.pageIndex + 1
+                color: Theme.textFaint
+                font.pixelSize: Theme.fontSmall
+                font.family: Theme.mono
+                visible: navButton.hovered || navButton.activeFocus
+            }
+        }
+        background: Rectangle {
+            radius: Theme.radiusSmall
+            color: navButton.checked ? Theme.elevated
+                 : navButton.down ? Theme.pressed : navButton.hovered ? Theme.hover : "transparent"
+            Rectangle {
+                visible: navButton.checked
+                anchors.left: parent.left
+                anchors.verticalCenter: parent.verticalCenter
+                width: Theme.s(3)
+                height: Theme.s(22)
+                radius: width / 2
+                color: Theme.accent
+            }
+            Behavior on color { ColorAnimation { duration: 90 } }
+        }
+    }
+
     ColumnLayout {
         id: appContent
         anchors.fill: parent
@@ -659,6 +717,7 @@ ApplicationWindow {
                 AppButton {
                     text: "Apply"
                     highlighted: true
+                    emphasisColor: Theme.ok
                     enabled: Link.validationErrors.length === 0 && !Link.busy && Helper.running
                     property string disabledReason: win.startBlockedReason || "Busy: waiting for the helper"
                     onClicked: Link.apply()
@@ -679,34 +738,43 @@ ApplicationWindow {
                 SplitView.fillHeight: true
                 SplitView.minimumHeight: 300
                 spacing: 0
-                TabBar {
-                    id: pages
-                    objectName: "pages"
-                    Layout.fillWidth: true
-                    background: Rectangle { color: Theme.panel; border.color: Theme.border }
-                    component PageTab: AppTabButton {
-                        id: tab
-                        ToolTip.visible: hovered && enabled
-                        ToolTip.delay: 600
-                        ToolTip.text: "Ctrl+" + (TabBar.index + 1)
-                    }
-                    PageTab { text: "Home" }
-                    PageTab { text: "Setup" }
-                    PageTab { text: "Link" }
-                    PageTab { text: "Scenario" }
-                    PageTab { text: "Monitor" }
-                    // Home once the link is configured; Setup until then.
-                    Component.onCompleted: currentIndex = Link.validationErrors.length === 0 ? 0 : 1
-                }
-                StackLayout {
+                RowLayout {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    currentIndex: pages.currentIndex
-                    HomePage { onOpenTab: (i) => pages.currentIndex = i }
-                    InterfacesPage { id: setupPage }
-                    LinkPage {}
-                    ScenarioPage {}
-                    MonitorPage {}
+                    spacing: 0
+
+                    Rectangle {
+                        Layout.preferredWidth: Theme.s(168)
+                        Layout.fillHeight: true
+                        color: Theme.panel
+                        Rectangle {
+                            anchors.right: parent.right
+                            width: 1
+                            height: parent.height
+                            color: Theme.border
+                        }
+                        ColumnLayout {
+                            anchors.fill: parent
+                            anchors.margins: Theme.s(12)
+                            spacing: Theme.s(6)
+                            NavButton { Layout.fillWidth: true; text: "Home"; pageIndex: 0; iconSource: "icons/home.svg" }
+                            NavButton { Layout.fillWidth: true; text: "Setup"; pageIndex: 1; iconSource: "icons/setup.svg" }
+                            NavButton { Layout.fillWidth: true; text: "Link"; pageIndex: 2; iconSource: "icons/link.svg" }
+                            NavButton { Layout.fillWidth: true; text: "Scenario"; pageIndex: 3; iconSource: "icons/scenario.svg" }
+                            NavButton { Layout.fillWidth: true; text: "Monitor"; pageIndex: 4; iconSource: "icons/monitor.svg" }
+                            Item { Layout.fillHeight: true }
+                        }
+                    }
+                    StackLayout {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        currentIndex: pages.currentIndex
+                        HomePage { onOpenTab: (i) => pages.currentIndex = i }
+                        InterfacesPage { id: setupPage }
+                        LinkPage {}
+                        ScenarioPage {}
+                        MonitorPage {}
+                    }
                 }
             }
 
@@ -745,52 +813,5 @@ ApplicationWindow {
             }
         }
 
-        // Status bar
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: Theme.s(26)
-            color: Theme.panel
-            Rectangle { width: parent.width; height: 1; color: Theme.border }
-            RowLayout {
-                anchors.fill: parent
-                anchors.leftMargin: 4
-                anchors.rightMargin: 8
-                spacing: 6
-                AppToolButton {
-                    id: panelToggle
-                    objectName: "panelToggle"
-                    Layout.preferredHeight: Theme.s(24)
-                    text: (win.panelOpen ? "▾ " : "▸ ") + "Log && commands"
-                    onClicked: win.panelOpen = !win.panelOpen
-                    ToolTip.visible: hovered && enabled
-                    ToolTip.text: win.panelOpen ? "Hide the event log and tc/ip commands"
-                                                : "Show the event log and tc/ip commands"
-                }
-                Rectangle {
-                    visible: win.unreadErrors > 0
-                    radius: height / 2
-                    color: Theme.dangerFill
-                    Layout.preferredHeight: Theme.s(18)
-                    Layout.preferredWidth: Math.max(18, unreadLabel.implicitWidth + 10)
-                    Label {
-                        id: unreadLabel
-                        anchors.centerIn: parent
-                        color: "white"
-                        font.bold: true
-                        text: win.unreadErrors
-                    }
-                    TapHandler { onTapped: win.panelOpen = true }
-                    HoverHandler { id: unreadHover }
-                    ToolTip.visible: unreadHover.hovered
-                    ToolTip.text: win.unreadErrors + (win.unreadErrors === 1 ? " new error" : " new errors") + " in the log"
-                }
-                Item { Layout.fillWidth: true }
-                AppToolButton {
-                    Layout.preferredHeight: Theme.s(24)
-                    text: "Shortcuts (F1)"
-                    onClicked: shortcutsDialog.open()
-                }
-            }
-        }
     }
 }

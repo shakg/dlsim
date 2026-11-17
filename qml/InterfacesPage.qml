@@ -18,6 +18,8 @@ Item {
 
     readonly property var errs: Link.fieldErrors
     property bool showAllIfaces: false
+    property bool advancedOpen: false
+    property bool trafficOpen: false
     function inUse(n) { return n !== "" && (n === Link.groundIface || n === Link.airIface || n === Link.hostIface) }
     readonly property string helperReason: "The privileged helper is not running (Start helper, at the top)"
     // First problem with the configuration, shown as the Start button's tooltip.
@@ -41,8 +43,8 @@ Item {
 
     RowLayout {
         anchors.fill: parent
-        anchors.margins: 8
-        spacing: 8
+        anchors.margins: Theme.s(16)
+        spacing: Theme.s(16)
 
         ColumnLayout {
             readonly property int sideWidth: Math.max(Theme.s(440), Math.min(Math.round(root.width * 0.42), Theme.s(760)))
@@ -177,6 +179,7 @@ Item {
             Section {
                 title: "Endpoints"
                 objectName: "endpointsSection"
+                visible: root.advancedOpen
                 Layout.fillWidth: true
                 Label {
                     Layout.fillWidth: true
@@ -229,6 +232,7 @@ Item {
 
             Section {
                 title: "Network interfaces"
+                visible: root.advancedOpen
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 RowLayout {
@@ -306,11 +310,49 @@ Item {
                     }
                 }
             }
+            RowLayout {
+                Layout.fillWidth: true
+                AppButton {
+                    flat: true
+                    text: (root.advancedOpen ? "▾" : "▸") + " Advanced setup"
+                    onClicked: root.advancedOpen = !root.advancedOpen
+                }
+                Item { Layout.fillWidth: true }
+            }
+            Item { Layout.fillHeight: true; visible: !root.advancedOpen }
         }
 
-        ClassesPanel {
-            Layout.fillWidth: true
+        ColumnLayout {
             Layout.fillHeight: true
+            Layout.fillWidth: true
+            spacing: Theme.s(8)
+            Section {
+                visible: !root.trafficOpen
+                title: "Traffic rules"
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignTop
+                Label {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    color: Theme.textDim
+                    text: Link.classes.filter(c => c.enabled).length + " enabled "
+                          + (Link.classes.filter(c => c.enabled).length === 1 ? "rule" : "rules")
+                          + ". Other traffic " + (Link.otherExcluded ? "is not impaired." : "uses the selected link condition.")
+                }
+                AppButton { text: "Edit traffic rules…"; onClicked: root.trafficOpen = true }
+            }
+            RowLayout {
+                visible: root.trafficOpen
+                Layout.fillWidth: true
+                Item { Layout.fillWidth: true }
+                AppButton { flat: true; text: "Done"; onClicked: root.trafficOpen = false }
+            }
+            ClassesPanel {
+                visible: root.trafficOpen
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+            }
+            Item { Layout.fillHeight: true; visible: !root.trafficOpen }
         }
     }
 

@@ -80,8 +80,8 @@ Section {
             height: col.implicitHeight + 8
             color: Theme.panelAlt
             radius: 3
-            border.color: rowError ? Theme.danger : modelData.mode === "excluded" ? Theme.border
-                          : modelData.mode === "custom" ? Theme.accent : Theme.ok
+            border.width: rowError || modelData.mode === "custom" ? 1 : 0
+            border.color: rowError ? Theme.danger : Theme.accent
 
             ColumnLayout {
                 id: col
@@ -109,9 +109,19 @@ Section {
                         text: root.editIndex === row.index ? "Done" : "Edit"
                         onClicked: root.editIndex = root.editIndex === row.index ? -1 : row.index
                     }
-                    AppToolButton { text: "▲"; property string disabledReason: "Already first"; enabled: row.index > 0; onClicked: Link.moveClass(row.index, -1) }
-                    AppToolButton { text: "▼"; property string disabledReason: "Already last"; enabled: row.index < list.count - 1; onClicked: Link.moveClass(row.index, 1) }
-                    AppToolButton { text: "✕"; onClicked: Link.removeClass(row.index) }
+                    AppToolButton {
+                        id: rowMenuButton
+                        text: "⋮"
+                        onClicked: rowMenu.open()
+                        Menu {
+                            id: rowMenu
+                            y: rowMenuButton.height
+                            MenuItem { text: "Move up"; enabled: row.index > 0; onTriggered: Link.moveClass(row.index, -1) }
+                            MenuItem { text: "Move down"; enabled: row.index < list.count - 1; onTriggered: Link.moveClass(row.index, 1) }
+                            MenuSeparator {}
+                            MenuItem { text: "Remove"; onTriggered: Link.removeClass(row.index) }
+                        }
+                    }
                 }
                 RowLayout {
                     visible: root.editIndex === row.index

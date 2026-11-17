@@ -35,7 +35,7 @@ ScrollView {
         radius: Theme.radius
         color: active ? Theme.selected : hover.hovered ? Theme.hover : Theme.panelAlt
         border.color: active ? Theme.accent : Theme.border
-        border.width: active ? 2 : 1
+        border.width: active ? 1 : 0
         HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }
         TapHandler {
             onTapped: {

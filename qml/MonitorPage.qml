@@ -24,8 +24,8 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 8
-        spacing: 6
+        anchors.margins: Theme.s(16)
+        spacing: Theme.s(10)
 
         RowLayout {
             ColumnLayout {
@@ -42,11 +42,20 @@ Item {
                 current: Stats.windowSeconds
                 onPicked: (v) => Stats.windowSeconds = v
             }
-            AppButton {
-                text: "Export CSV…"
-                onClicked: root.ApplicationWindow.window.askSave("Export statistics", ["CSV (*.csv)"], (url) => Stats.exportCsv(url))
+            AppToolButton {
+                id: statsMenuButton
+                text: "⋮"
+                onClicked: statsMenu.open()
+                Menu {
+                    id: statsMenu
+                    y: statsMenuButton.height
+                    MenuItem {
+                        text: "Export CSV…"
+                        onTriggered: root.ApplicationWindow.window.askSave("Export statistics", ["CSV (*.csv)"], (url) => Stats.exportCsv(url))
+                    }
+                    MenuItem { text: "Clear history"; onTriggered: Stats.clear() }
+                }
             }
-            AppButton { text: "Clear"; onClicked: Stats.clear() }
         }
         // Before the first start there is nothing to chart.
         Rectangle {
@@ -56,7 +65,7 @@ Item {
             Layout.minimumHeight: 150
             visible: !Link.active && Stats.sampleCount === 0
             color: Theme.panel
-            border.color: Theme.border
+            border.width: 0
             radius: 4
             EmptyState {
                 anchors.centerIn: parent
@@ -152,22 +161,32 @@ Item {
                 AppButton {
                     text: Sockets.running ? "Stop" : "Start"
                     highlighted: !Sockets.running
+                    emphasisColor: Theme.ok
                     enabled: Helper.running
                     property string disabledReason: "The privileged helper is not running (Start helper, at the top)"
                     onClicked: Sockets.running ? Sockets.stop() : Sockets.start()
                 }
-                AppButton {
-                    text: "Export CSV…"
-                    onClicked: root.ApplicationWindow.window.askSave("Export socket history", ["CSV (*.csv)"], (url) => Sockets.exportCsv(url))
+                AppToolButton {
+                    id: socketMenuButton
+                    text: "⋮"
+                    onClicked: socketMenu.open()
+                    Menu {
+                        id: socketMenu
+                        y: socketMenuButton.height
+                        MenuItem {
+                            text: "Export CSV…"
+                            onTriggered: root.ApplicationWindow.window.askSave("Export socket history", ["CSV (*.csv)"], (url) => Sockets.exportCsv(url))
+                        }
+                        MenuItem { text: "Clear history"; onTriggered: Sockets.clear() }
+                    }
                 }
-                AppButton { text: "Clear"; onClicked: Sockets.clear() }
                 Label {
                     Layout.fillWidth: true
+                    visible: text.length > 0
                     elide: Text.ElideRight
                     color: Sockets.lastError ? Theme.danger : Theme.textDim
                     text: Sockets.lastError ? Sockets.lastError
-                          : "ss -tnoi dst/src " + Sockets.peerIp + " port " + Sockets.peerPort
-                            + (Sockets.tracked ? " · charting " + Sockets.tracked : "")
+                          : Sockets.tracked ? "Monitoring " + Sockets.tracked : ""
                 }
             }
 

@@ -34,7 +34,7 @@ Item {
         return m > 0 ? m + ":" + (r < 10 ? "0" : "") + r : r + " s"
     }
     function typeColor(t) {
-        return t === "outage" ? Theme.dangerFill : t === "fade" ? "#8e5ea2" : t === "dropouts" ? "#9c7a12" : "#2f4b6e"
+        return t === "outage" ? "#7b5058" : t === "fade" ? "#665a73" : t === "dropouts" ? "#6b6044" : "#455d73"
     }
     function shortLabel(s) {
         return s.type === "outage" ? "Drop link"
@@ -71,8 +71,8 @@ Item {
                 Gradient {
                     id: fadeGradient
                     orientation: Gradient.Horizontal
-                    GradientStop { position: 0; color: "#2f4b6e" }
-                    GradientStop { position: 1; color: "#8e5ea2" }
+                    GradientStop { position: 0; color: "#455d73" }
+                    GradientStop { position: 1; color: "#665a73" }
                 }
                 border.width: index === root.selected || missing ? 2 : (index === Scenario.currentStep ? 2 : 0)
                 border.color: missing ? Theme.danger : index === root.selected ? "white" : Theme.accent

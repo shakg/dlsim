@@ -20,12 +20,16 @@ T.TabButton {
     }
 
     background: Rectangle {
-        anchors.margins: Theme.s(3)
-        radius: Theme.radiusSmall
-        color: control.checked ? Theme.elevated
-             : control.down ? Theme.pressed : control.hovered ? Theme.hover : "transparent"
-        border.width: control.checked || control.activeFocus ? 1 : 0
-        border.color: control.activeFocus ? Theme.accent : Theme.border
+        color: control.down ? Theme.pressed : control.hovered ? Theme.hover : "transparent"
+        border.width: 0
+        Rectangle {
+            visible: control.checked || control.activeFocus
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            height: control.activeFocus ? 3 : 2
+            color: Theme.accent
+        }
         Behavior on color { ColorAnimation { duration: 90 } }
     }
 }

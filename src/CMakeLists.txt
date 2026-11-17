@@ -56,6 +56,11 @@ set(DLSIM_QML_FILES
     ../qml/SimpleEditor.qml
     ../qml/Timeline.qml
     ../qml/StatChart.qml
+    ../qml/icons/home.svg
+    ../qml/icons/setup.svg
+    ../qml/icons/link.svg
+    ../qml/icons/scenario.svg
+    ../qml/icons/monitor.svg
     ../qml/qmldir
 )
 qt_add_resources(dlsim "qml"

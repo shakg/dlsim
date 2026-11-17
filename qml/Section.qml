@@ -10,7 +10,7 @@ Rectangle {
     default property alias content: body.data
     property alias spacing: body.spacing
     color: Theme.panel
-    border.color: Theme.border
+    border.width: 0
     radius: Theme.radius
     implicitWidth: 300 // sections are sized by their layout; content width would feed back through wrapped labels
     implicitHeight: outer.implicitHeight + Theme.s(24)
@@ -23,8 +23,8 @@ Rectangle {
         Label {
             visible: root.title.length > 0
             text: root.title
-            font.bold: true
-            font.pixelSize: Theme.fontBase + 1
+            font.weight: Font.DemiBold
+            font.pixelSize: Theme.fontBase
             color: root.titleColor
         }
         ColumnLayout {

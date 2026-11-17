@@ -95,7 +95,7 @@ Item {
 
     RowLayout {
         anchors.fill: parent
-        anchors.margins: 8
+        anchors.margins: Theme.s(16)
         spacing: 8
 
         Section {
@@ -126,49 +126,53 @@ Item {
                     ToolTip.text: Presets.isBuiltinScenario(Scenario.name.trim())
                                   ? "Built-in scenarios can't be changed: save a copy" : "Save as '" + Scenario.name + "'"
                 }
-                AppButton { text: "Save as…"; onClicked: saveAsDialog.openWith(Scenario.name.trim()) }
-                AppButton {
-                    text: "Delete"
-                    enabled: root.hasSelection && !Presets.isBuiltinScenario(root.selectedScenario)
-                    property string disabledReason: root.hasSelection ? "Built-in scenarios can't be deleted" : "Select a scenario"
-                    onClicked: root.deleteSelected()
-                }
-                AppButton {
-                    text: "Import…"
-                    onClicked: root.unlessUnsaved(() => root.ApplicationWindow.window.askOpen(
-                        "Import scenario", ["Scenario (*.json)"], (url) => {
-                            const n = Presets.importScenario(url)
-                            if (!n)
-                                return
-                            root.selectedScenario = n
-                            Scenario.load(Presets.scenario(n))
-                            const missing = Presets.missingPresets(Presets.scenario(n))
-                            if (missing.length > 0)
-                                root.ApplicationWindow.window.showInfo("Missing presets",
-                                    "'" + n + "' uses presets that don't exist here:\n\n• "
-                                    + missing.map(m => m || "(none chosen)").join("\n• ")
-                                    + "\n\nImport or create them, or pick other presets for the red steps.")
-                        }))
-                }
-                AppButton {
-                    text: "Export…"
-                    enabled: root.hasSelection
-                    property string disabledReason: "Select a scenario"
-                    onClicked: root.ApplicationWindow.window.askSave("Export scenario", ["Scenario (*.json)"],
-                                   (url) => Presets.exportScenario(root.selectedScenario, url))
-                }
-                AppButton {
-                    objectName: "reportsButton"
-                    text: "Reports…"
-                    onClicked: reportsDialog.open()
-                    ToolTip.visible: hovered && enabled
-                    ToolTip.text: "Reports of earlier runs"
-                }
                 AppButton {
                     text: "New…"
                     onClicked: root.unlessUnsaved(() => templateDialog.open())
                     ToolTip.visible: hovered && enabled
                     ToolTip.text: "New scenario from a goal or a blank one"
+                }
+                Item { Layout.fillWidth: true }
+                AppToolButton {
+                    id: scenarioMenuButton
+                    text: "⋮"
+                    onClicked: scenarioMenu.open()
+                    Menu {
+                        id: scenarioMenu
+                        y: scenarioMenuButton.height
+                        MenuItem { text: "Save as…"; onTriggered: saveAsDialog.openWith(Scenario.name.trim()) }
+                        MenuItem {
+                            text: "Import…"
+                            onTriggered: root.unlessUnsaved(() => root.ApplicationWindow.window.askOpen(
+                                "Import scenario", ["Scenario (*.json)"], (url) => {
+                                    const n = Presets.importScenario(url)
+                                    if (!n)
+                                        return
+                                    root.selectedScenario = n
+                                    Scenario.load(Presets.scenario(n))
+                                    const missing = Presets.missingPresets(Presets.scenario(n))
+                                    if (missing.length > 0)
+                                        root.ApplicationWindow.window.showInfo("Missing presets",
+                                            "'" + n + "' uses presets that don't exist here:\n\n• "
+                                            + missing.map(m => m || "(none chosen)").join("\n• ")
+                                            + "\n\nImport or create them, or pick other presets for the red steps.")
+                                }))
+                        }
+                        MenuItem {
+                            text: "Export…"
+                            enabled: root.hasSelection
+                            onTriggered: root.ApplicationWindow.window.askSave("Export scenario", ["Scenario (*.json)"],
+                                           (url) => Presets.exportScenario(root.selectedScenario, url))
+                        }
+                        MenuSeparator {}
+                        MenuItem { objectName: "reportsButton"; text: "Run reports…"; onTriggered: reportsDialog.open() }
+                        MenuSeparator {}
+                        MenuItem {
+                            text: "Delete scenario…"
+                            enabled: root.hasSelection && !Presets.isBuiltinScenario(root.selectedScenario)
+                            onTriggered: root.deleteSelected()
+                        }
+                    }
                 }
             }
             ErrorNote {
@@ -177,13 +181,6 @@ Item {
                 onDismissed: Presets.clearScenarioError()
             }
             RowLayout {
-                Label { text: "Name" }
-                AppTextField {
-                    Layout.preferredWidth: Theme.s(220)
-                    text: Scenario.name
-                    selectByMouse: true
-                    onEditingFinished: Scenario.name = text
-                }
                 AppCheckBox {
                     text: "Loop"
                     checked: Scenario.loop
@@ -235,12 +232,11 @@ Item {
                     width: steps.width - 10
                     height: missingPreset ? Theme.s(58) : Theme.s(36)
                     radius: 3
-                    color: current ? "#21406b" : missingPreset ? "#3a2226"
-                           : index === timeline.selected ? "#2c3a4d" : Theme.panelAlt
-                    border.color: modelData.type === "outage" || missingPreset ? Theme.danger
-                                  : modelData.type === "dropouts" ? Theme.warn
-                                  : modelData.type === "fade" ? "#ce93d8" : Theme.border
-                    border.width: missingPreset ? 2 : 1
+                    color: current ? "#294438" : missingPreset ? "#432d31"
+                           : index === timeline.selected ? Theme.elevated : Theme.panelAlt
+                    border.color: missingPreset ? Theme.danger
+                                  : current || index === timeline.selected ? Theme.accent : Theme.border
+                    border.width: missingPreset ? 2 : current || index === timeline.selected ? 1 : 0
 
                     Rectangle {
                         visible: stepRow.current
@@ -329,9 +325,19 @@ Item {
                             text: Scenario.stepElapsed.toFixed(1)
                             color: Theme.accent
                         }
-                        AppToolButton { text: "▲"; property string disabledReason: "Already first"; enabled: stepRow.index > 0; onClicked: Scenario.moveStep(stepRow.index, -1) }
-                        AppToolButton { text: "▼"; property string disabledReason: "Already last"; enabled: stepRow.index < steps.count - 1; onClicked: Scenario.moveStep(stepRow.index, 1) }
-                        AppToolButton { text: "✕"; onClicked: Scenario.removeStep(stepRow.index) }
+                        AppToolButton {
+                            id: stepMenuButton
+                            text: "⋮"
+                            onClicked: stepMenu.open()
+                            Menu {
+                                id: stepMenu
+                                y: stepMenuButton.height
+                                MenuItem { text: "Move up"; enabled: stepRow.index > 0; onTriggered: Scenario.moveStep(stepRow.index, -1) }
+                                MenuItem { text: "Move down"; enabled: stepRow.index < steps.count - 1; onTriggered: Scenario.moveStep(stepRow.index, 1) }
+                                MenuSeparator {}
+                                MenuItem { text: "Remove step"; onTriggered: Scenario.removeStep(stepRow.index) }
+                            }
+                        }
                     }
                 }
             }
@@ -355,6 +361,7 @@ Item {
                         anchors.fill: parent
                         text: Scenario.state === "playing" ? "Pause" : Scenario.state === "paused" ? "Resume" : "Play"
                         highlighted: Scenario.state !== "playing"
+                        emphasisColor: Theme.ok
                         enabled: parent.blocked === ""
                         onClicked: Scenario.state === "playing" ? Scenario.pause() : Scenario.play()
                     }

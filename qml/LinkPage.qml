@@ -25,8 +25,8 @@ Item {
 
     RowLayout {
         anchors.fill: parent
-        anchors.margins: 8
-        spacing: 8
+        anchors.margins: Theme.s(16)
+        spacing: Theme.s(16)
 
         ColumnLayout {
             // Proportional with limits; min = preferred = max so the scrolling cards can't
@@ -43,13 +43,22 @@ Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 RowLayout {
-                    Label { text: "Click to apply"; color: Theme.textDim; Layout.fillWidth: true }
-                    AppButton {
-                        text: "Import…"
-                        onClicked: root.ApplicationWindow.window.askOpen("Import preset", ["Preset (*.json)"], (url) => {
-                            const n = Presets.importPreset(url)
-                            if (n) Link.applyPreset(Presets.preset(n))
-                        })
+                    Item { Layout.fillWidth: true }
+                    AppToolButton {
+                        id: conditionMenuButton
+                        text: "⋮"
+                        onClicked: conditionMenu.open()
+                        Menu {
+                            id: conditionMenu
+                            y: conditionMenuButton.height
+                            MenuItem {
+                                text: "Import condition…"
+                                onTriggered: root.ApplicationWindow.window.askOpen("Import preset", ["Preset (*.json)"], (url) => {
+                                    const n = Presets.importPreset(url)
+                                    if (n) Link.applyPreset(Presets.preset(n))
+                                })
+                            }
+                        }
                     }
                 }
                 PresetCards {
@@ -69,41 +78,6 @@ Item {
                 }
             }
 
-            Section {
-                title: "State"
-                Layout.fillWidth: true
-                Label {
-                    Layout.fillWidth: true
-                    wrapMode: Text.WordWrap
-                    text: !Helper.running ? "Helper not running"
-                          : !Link.active ? "Not active. Start it at the top right."
-                          : Link.cut ? "Active, LINK CUT"
-                          : Link.dirty ? "Active, unapplied changes" : "Active, in sync"
-                    color: !Link.active ? Theme.textDim : Link.cut ? Theme.danger : Link.dirty ? Theme.warn : Theme.ok
-                    font.bold: true
-                }
-                Label {
-                    text: "Active preset: " + (Link.activePreset || "(custom)")
-                    color: Theme.textDim
-                    Layout.fillWidth: true
-                    elide: Text.ElideRight
-                }
-                AppCheckBox {
-                    text: "Apply edits immediately (live)"
-                    checked: Link.autoApply
-                    onToggled: {
-                        Link.autoApply = checked
-                        checked = Qt.binding(() => Link.autoApply)
-                    }
-                }
-                Label {
-                    Layout.fillWidth: true
-                    visible: Link.validationErrors.length > 0
-                    wrapMode: Text.WordWrap
-                    color: Theme.danger
-                    text: "• " + Link.validationErrors.join("\n• ")
-                }
-            }
         }
 
         ColumnLayout {
@@ -129,6 +103,21 @@ Item {
                     onToggled: UiSettings.setValue("simpleSameBoth", checked)
                 }
                 Item { Layout.fillWidth: true }
+                AppToolButton {
+                    id: linkMenuButton
+                    text: "⋮"
+                    onClicked: linkMenu.open()
+                    Menu {
+                        id: linkMenu
+                        y: linkMenuButton.height
+                        MenuItem {
+                            text: "Apply edits immediately"
+                            checkable: true
+                            checked: Link.autoApply
+                            onTriggered: Link.autoApply = checked
+                        }
+                    }
+                }
             }
             Label {
                 objectName: "linkSummary"
