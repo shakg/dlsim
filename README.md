@@ -196,6 +196,16 @@ Before using bridge mode, stop NetworkManager from managing the two NICs
 
 ## Using it
 
+**First run.** With no saved configuration a setup wizard opens: Welcome
+(what DLSim does and why it asks for your password; the helper starts only
+when you continue), Where is this PC (between two devices = bridge, or on the
+ground PC = host), Ports (with live link and traffic per port, Identify by
+unplugging, and names for the two ends, e.g. "Ground station" and "Drone",
+used in labels throughout), Traffic (templates; SSH is kept clean and in host
+mode other traffic is left alone by default, with the reason shown), Starting
+condition (preset cards) and Review + Start. Back and Next keep your choices;
+Cancel leaves the app as it was. Run it again from **⋮ → Run setup again…**.
+
 The window has a header, five tabs, a status bar and a collapsible bottom
 panel. It fits 1366×768.
 

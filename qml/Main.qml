@@ -180,6 +180,14 @@ ApplicationWindow {
         }
     }
 
+    // First run: no saved configuration yet.
+    Wizard { id: wizard; onFinished: pages.currentIndex = 0 }
+    Timer {
+        running: !Link.hasSavedConfig
+        interval: 300
+        onTriggered: wizard.begin()
+    }
+
     // Shared file dialog: pages call ApplicationWindow.window.askSave/askOpen.
     FileDialog {
         id: fileDialog
@@ -319,6 +327,10 @@ ApplicationWindow {
                 Menu {
                     id: moreMenu
                     y: moreButton.height
+                    MenuItem {
+                        text: "Run setup again…"
+                        onTriggered: wizard.begin()
+                    }
                     MenuItem {
                         text: "Reset all…"
                         enabled: Helper.running && !Link.busy

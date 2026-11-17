@@ -30,8 +30,8 @@ Item {
         RowLayout {
             ColumnLayout {
                 spacing: 0
-                DirStats { name: "Uplink " + (Stats.uplink.dev ? "(" + Stats.uplink.dev + ")" : ""); color: Theme.up; s: Stats.uplink }
-                DirStats { name: "Downlink " + (Stats.downlink.dev ? "(" + Stats.downlink.dev + ")" : ""); color: Theme.down; s: Stats.downlink }
+                DirStats { name: Link.groundName + " → " + Link.vehicleName + (Stats.uplink.dev ? " (" + Stats.uplink.dev + ")" : ""); color: Theme.up; s: Stats.uplink }
+                DirStats { name: Link.vehicleName + " → " + Link.groundName + (Stats.downlink.dev ? " (" + Stats.downlink.dev + ")" : ""); color: Theme.down; s: Stats.downlink }
             }
             Item { Layout.fillWidth: true }
             Label { text: "Window" }

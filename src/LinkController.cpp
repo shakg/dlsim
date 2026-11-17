@@ -115,6 +115,37 @@ QVariantList LinkController::endpoints() const
     return out;
 }
 
+void LinkController::setGroundName(const QString &n)
+{
+    const QString v = n.trimmed().isEmpty() ? QStringLiteral("Ground") : n.trimmed();
+    if (v == m_groundName)
+        return;
+    m_groundName = v;
+    Q_EMIT namesChanged();
+    m_saveTimer.start();
+}
+
+void LinkController::setVehicleName(const QString &n)
+{
+    const QString v = n.trimmed().isEmpty() ? QStringLiteral("Vehicle") : n.trimmed();
+    if (v == m_vehicleName)
+        return;
+    // The endpoint of the same name follows (classes refer to it).
+    if (m_edit.renameEndpoint(m_vehicleName, v))
+        Q_EMIT configChanged();
+    m_vehicleName = v;
+    Q_EMIT namesChanged();
+    m_saveTimer.start();
+}
+
+void LinkController::clearClasses()
+{
+    if (m_edit.classes.isEmpty())
+        return;
+    m_edit.classes.clear();
+    edited(true);
+}
+
 void LinkController::addClassFor(const QString &name, const QString &proto, const QString &endpoint, int port,
                                  const QString &mode)
 {
@@ -727,12 +758,17 @@ void LinkController::saveSettings()
     s.setValue("link/config", QString::fromUtf8(QJsonDocument(c.toJson()).toJson(QJsonDocument::Compact)));
     s.setValue("link/activePreset", m_activePreset);
     s.setValue("link/autoApply", m_autoApply);
+    s.setValue("names/ground", m_groundName);
+    s.setValue("names/vehicle", m_vehicleName);
 }
 
 void LinkController::loadSettings()
 {
     QSettings s;
     const QJsonDocument d = QJsonDocument::fromJson(s.value("link/config").toString().toUtf8());
+    m_hasSavedConfig = d.isObject();
+    m_groundName = s.value("names/ground", m_groundName).toString();
+    m_vehicleName = s.value("names/vehicle", m_vehicleName).toString();
     if (d.isObject()) {
         m_edit = LinkConfig::fromJson(d.object());
         m_edit.cut = false;

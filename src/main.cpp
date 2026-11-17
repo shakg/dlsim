@@ -203,7 +203,9 @@ int main(int argc, char *argv[])
         QTimer::singleShot(2500, window, [=] { (*shoot)(0); });
     }
 
-    if (qEnvironmentVariableIntValue("DLSIM_NO_HELPER") != 1)
+    // First run: the setup wizard explains the password prompt and starts the
+    // helper from its Welcome step. Later runs start it right away.
+    if (qEnvironmentVariableIntValue("DLSIM_NO_HELPER") != 1 && link.hasSavedConfig())
         helper.start();
     return app.exec();
 }

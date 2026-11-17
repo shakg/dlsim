@@ -122,7 +122,7 @@ Item {
                 anchors.margins: 20
                 spacing: 12
                 Node {
-                    title: root.bridge ? "Ground" : "This PC"
+                    title: root.bridge ? Link.groundName : "This PC"
                     iface: root.bridge ? Link.groundIface : Link.hostIface
                     subtitle: root.bridge ? (Link.groundIface || "no NIC chosen") : (Link.hostIface || "no NIC chosen")
                 }
@@ -131,7 +131,7 @@ Item {
                     spacing: 18
                     Lane {
                         Layout.fillWidth: true
-                        name: "Uplink"
+                        name: "Uplink  " + (root.bridge ? Link.groundName : "This PC") + " → " + Link.vehicleName
                         base: Theme.up
                         toVehicle: true
                         profile: Link.uplink
@@ -149,7 +149,7 @@ Item {
                     }
                     Lane {
                         Layout.fillWidth: true
-                        name: "Downlink"
+                        name: "Downlink  " + Link.vehicleName + " → " + (root.bridge ? Link.groundName : "This PC")
                         base: Theme.down
                         toVehicle: false
                         profile: Link.downlink
@@ -157,7 +157,7 @@ Item {
                     }
                 }
                 Node {
-                    title: "Vehicle"
+                    title: Link.vehicleName
                     iface: root.bridge ? Link.airIface : ""
                     subtitle: root.bridge ? (Link.airIface || "no NIC chosen") : "via " + (Link.hostIface || "?")
                 }

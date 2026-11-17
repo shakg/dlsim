@@ -272,7 +272,7 @@ Section {
                 ProfileEditor {
                     Layout.fillWidth: true
                     Layout.alignment: Qt.AlignTop
-                    title: "Uplink (ground → air)"
+                    title: "Uplink  " + Link.groundName + " → " + Link.vehicleName
                     accent: Theme.up
                     profile: classDialog.cls ? classDialog.cls.uplink : ({})
                     errorPrefix: "classes." + classDialog.classIndex + ".uplink."
@@ -281,7 +281,7 @@ Section {
                 ProfileEditor {
                     Layout.fillWidth: true
                     Layout.alignment: Qt.AlignTop
-                    title: "Downlink (air → ground)"
+                    title: "Downlink  " + Link.vehicleName + " → " + Link.groundName
                     accent: Theme.down
                     profile: classDialog.cls ? classDialog.cls.downlink : ({})
                     errorPrefix: "classes." + classDialog.classIndex + ".downlink."

@@ -160,7 +160,7 @@ Item {
                             Layout.fillWidth: true
                             Layout.alignment: Qt.AlignTop
                             dir: "uplink"
-                            title: "Uplink  ground → air"
+                            title: "Uplink  " + Link.groundName + " → " + Link.vehicleName
                             accent: Theme.up
                         }
                         Rectangle { visible: !sameBoth.checked; Layout.fillHeight: true; width: 1; color: Theme.border }
@@ -169,7 +169,7 @@ Item {
                             Layout.fillWidth: true
                             Layout.alignment: Qt.AlignTop
                             dir: "downlink"
-                            title: "Downlink  air → ground"
+                            title: "Downlink  " + Link.vehicleName + " → " + Link.groundName
                             accent: Theme.down
                         }
                         Item { visible: sameBoth.checked; Layout.fillWidth: true }
@@ -180,7 +180,7 @@ Item {
                         ProfileEditor {
                             Layout.fillWidth: true
                             Layout.alignment: Qt.AlignTop
-                            title: "Uplink  ground → air"
+                            title: "Uplink  " + Link.groundName + " → " + Link.vehicleName
                             accent: Theme.up
                             profile: Link.uplink
                             errorPrefix: "uplink."
@@ -190,7 +190,7 @@ Item {
                         ProfileEditor {
                             Layout.fillWidth: true
                             Layout.alignment: Qt.AlignTop
-                            title: "Downlink  air → ground"
+                            title: "Downlink  " + Link.vehicleName + " → " + Link.groundName
                             accent: Theme.down
                             profile: Link.downlink
                             errorPrefix: "downlink."

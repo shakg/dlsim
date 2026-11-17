@@ -88,7 +88,7 @@ Item {
                     columns: 3
                     columnSpacing: 8
                     visible: Link.mode === "bridge"
-                    Label { text: "Ground NIC" }
+                    Label { text: Link.groundName + " NIC" }
                     BoundCombo {
                         Layout.fillWidth: true
                         enabled: !Link.active
@@ -109,7 +109,7 @@ Item {
                     }
                     Item { visible: !!root.errs.groundIface; implicitWidth: 1 }
                     FieldError { visible: msg.length > 0; Layout.columnSpan: 2; msg: root.errs.groundIface || "" }
-                    Label { text: "Air NIC" }
+                    Label { text: Link.vehicleName + " side NIC" }
                     BoundCombo {
                         Layout.fillWidth: true
                         enabled: !Link.active

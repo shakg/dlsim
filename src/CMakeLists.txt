@@ -43,6 +43,7 @@ set(DLSIM_QML_FILES
     ../qml/PresetCards.qml
     ../qml/SimpleEditor.qml
     ../qml/Timeline.qml
+    ../qml/Wizard.qml
     ../qml/StatChart.qml
     ../qml/qmldir
 )
