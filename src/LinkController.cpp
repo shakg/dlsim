@@ -1,5 +1,7 @@
 #include "LinkController.h"
 
+#include "SimpleMode.h"
+
 #include "EventLog.h"
 #include "HelperClient.h"
 #include "SystemInfo.h"
@@ -177,6 +179,32 @@ void LinkController::setProfileField(const QString &dir, const QString &key, con
     if (!m_activePreset.isEmpty() && !m_activePreset.endsWith('*'))
         m_activePreset += '*';
     edited(true);
+}
+
+QString LinkController::summary() const { return dlsim::summarize(m_edit.uplink, m_edit.downlink); }
+
+QVariantMap LinkController::simpleOf(const QString &dir) const
+{
+    return dlsim::toSimple(dir == "downlink" ? m_edit.downlink : m_edit.uplink).toMap();
+}
+
+void LinkController::setSimple(const QString &dir, const QVariantMap &settings)
+{
+    const dlsim::SimpleSettings s = dlsim::SimpleSettings::fromMap(settings);
+    const Profile up = dir == "downlink" ? m_edit.uplink : dlsim::applySimple(m_edit.uplink, s);
+    const Profile down = dir == "uplink" ? m_edit.downlink : dlsim::applySimple(m_edit.downlink, s);
+    if (up == m_edit.uplink && down == m_edit.downlink)
+        return;
+    m_edit.uplink = up;
+    m_edit.downlink = down;
+    if (!m_activePreset.isEmpty() && !m_activePreset.endsWith('*'))
+        m_activePreset += '*';
+    edited(true);
+}
+
+QStringList LinkController::advancedFields(const QString &dir) const
+{
+    return dlsim::advancedOnlyFields(dir == "downlink" ? m_edit.downlink : m_edit.uplink);
 }
 
 void LinkController::setProfiles(const QVariantMap &uplink, const QVariantMap &downlink, const QString &presetName)

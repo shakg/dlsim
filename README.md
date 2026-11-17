@@ -226,7 +226,14 @@ class matches packets *to or from* IP:port, so one class covers both
 directions. First match wins. "Other traffic" uses the link profile or is
 excluded.
 
-**Link.** Uplink and downlink editors: delay, jitter, correlation and
+**Link.** A plain-language summary of the link ("≈ 80 ms round trip · about
+1 in 100 packets lost · max 2 Mbit/s") and two editor modes (the choice is
+remembered). **Simple** (default): latency, variation, packet loss (None /
+Occasional / Bursty fades with amount and burst length) and a bandwidth cap,
+with **Same for both directions** on by default. Bursty loss maps to
+Gilbert-Elliott with `r = 100 / burst`, `1-h = 100%`, `1-k = 0` and `p` chosen
+for the average loss. Fields simple mode can't show are kept and listed.
+**Advanced**: uplink and downlink editors with every netem field: delay, jitter, correlation and
 distribution (uniform, normal, pareto, paretonormal); loss (random with
 correlation, or Gilbert-Elliott `p`, `r`, `1-h`, `1-k`); rate (∞ = unlimited)
 and queue limit (auto = sized from delay × rate); duplicate, reorder (with

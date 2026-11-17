@@ -102,33 +102,101 @@ Item {
             }
         }
 
-        ScrollView {
-            id: editors
+        ColumnLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            contentWidth: availableWidth
-            clip: true
+            spacing: 6
+
             RowLayout {
-                width: editors.availableWidth
-                spacing: 12
-                ProfileEditor {
-                    Layout.fillWidth: true
-                    Layout.alignment: Qt.AlignTop
-                    title: "Uplink  ground → air"
-                    accent: Theme.up
-                    profile: Link.uplink
-                    errorPrefix: "uplink."
-                    onEdited: (k, v) => Link.setProfileField("uplink", k, v)
+                Layout.fillWidth: true
+                TabBar {
+                    id: modeTabs
+                    objectName: "editorModeTabs"
+                    currentIndex: UiSettings.flag("advancedEditor", false) ? 1 : 0
+                    onCurrentIndexChanged: UiSettings.setValue("advancedEditor", currentIndex === 1)
+                    TabButton { text: "Simple"; width: implicitWidth + 24 }
+                    TabButton { text: "Advanced"; width: implicitWidth + 24 }
                 }
-                Rectangle { Layout.fillHeight: true; width: 1; color: Theme.border }
-                ProfileEditor {
-                    Layout.fillWidth: true
-                    Layout.alignment: Qt.AlignTop
-                    title: "Downlink  air → ground"
-                    accent: Theme.down
-                    profile: Link.downlink
-                    errorPrefix: "downlink."
-                    onEdited: (k, v) => Link.setProfileField("downlink", k, v)
+                CheckBox {
+                    id: sameBoth
+                    visible: modeTabs.currentIndex === 0
+                    text: "Same for both directions"
+                    checked: UiSettings.flag("simpleSameBoth", true)
+                    onToggled: UiSettings.setValue("simpleSameBoth", checked)
+                }
+                Item { Layout.fillWidth: true }
+            }
+            Label {
+                objectName: "linkSummary"
+                Layout.fillWidth: true
+                elide: Text.ElideRight
+                font.pixelSize: 14
+                text: Link.summary
+            }
+
+            ScrollView {
+                id: editors
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                contentWidth: availableWidth
+                clip: true
+                StackLayout {
+                    width: editors.availableWidth
+                    currentIndex: modeTabs.currentIndex
+                    // Simple
+                    RowLayout {
+                        Layout.alignment: Qt.AlignTop
+                        spacing: 12
+                        SimpleEditor {
+                            visible: sameBoth.checked
+                            Layout.fillWidth: true
+                            Layout.maximumWidth: 640
+                            Layout.alignment: Qt.AlignTop
+                            dir: "both"
+                            title: "Both directions"
+                        }
+                        SimpleEditor {
+                            visible: !sameBoth.checked
+                            Layout.fillWidth: true
+                            Layout.alignment: Qt.AlignTop
+                            dir: "uplink"
+                            title: "Uplink  ground → air"
+                            accent: Theme.up
+                        }
+                        Rectangle { visible: !sameBoth.checked; Layout.fillHeight: true; width: 1; color: Theme.border }
+                        SimpleEditor {
+                            visible: !sameBoth.checked
+                            Layout.fillWidth: true
+                            Layout.alignment: Qt.AlignTop
+                            dir: "downlink"
+                            title: "Downlink  air → ground"
+                            accent: Theme.down
+                        }
+                        Item { visible: sameBoth.checked; Layout.fillWidth: true }
+                    }
+                    // Advanced: every netem field
+                    RowLayout {
+                        spacing: 12
+                        ProfileEditor {
+                            Layout.fillWidth: true
+                            Layout.alignment: Qt.AlignTop
+                            title: "Uplink  ground → air"
+                            accent: Theme.up
+                            profile: Link.uplink
+                            errorPrefix: "uplink."
+                            onEdited: (k, v) => Link.setProfileField("uplink", k, v)
+                        }
+                        Rectangle { Layout.fillHeight: true; width: 1; color: Theme.border }
+                        ProfileEditor {
+                            Layout.fillWidth: true
+                            Layout.alignment: Qt.AlignTop
+                            title: "Downlink  air → ground"
+                            accent: Theme.down
+                            profile: Link.downlink
+                            errorPrefix: "downlink."
+                            onEdited: (k, v) => Link.setProfileField("downlink", k, v)
+                        }
+                    }
                 }
             }
         }

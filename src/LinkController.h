@@ -30,6 +30,8 @@ class LinkController : public QObject
     Q_PROPERTY(QVariantList classes READ classes NOTIFY configChanged)
     Q_PROPERTY(bool otherExcluded READ otherExcluded WRITE setOtherExcluded NOTIFY configChanged)
     Q_PROPERTY(QString activePreset READ activePreset NOTIFY configChanged)
+    // Plain-language result of both profiles, e.g. "≈ 80 ms round trip · ...".
+    Q_PROPERTY(QString summary READ summary NOTIFY configChanged)
     Q_PROPERTY(bool autoApply READ autoApply WRITE setAutoApply NOTIFY autoApplyChanged)
 
     Q_PROPERTY(bool active READ isActive NOTIFY appliedChanged)
@@ -60,6 +62,7 @@ public:
     QVariantList classes() const;
     bool otherExcluded() const { return m_edit.otherMode == dlsim::ClassMode::Excluded; }
     QString activePreset() const { return m_activePreset; }
+    QString summary() const;
     bool autoApply() const { return m_autoApply; }
 
     void setMode(const QString &m);
@@ -89,6 +92,10 @@ public:
 
     // Profile editing. dir is "uplink" or "downlink"; key is a Profile JSON key.
     Q_INVOKABLE void setProfileField(const QString &dir, const QString &key, const QVariant &value);
+    // Simple mode (see SimpleMode.h). dir: "uplink", "downlink" or "both" (set only).
+    Q_INVOKABLE QVariantMap simpleOf(const QString &dir) const;
+    Q_INVOKABLE void setSimple(const QString &dir, const QVariantMap &settings);
+    Q_INVOKABLE QStringList advancedFields(const QString &dir) const;
     Q_INVOKABLE void setProfiles(const QVariantMap &uplink, const QVariantMap &downlink, const QString &presetName);
     Q_INVOKABLE void applyPreset(const QVariantMap &preset);
     // Follow a preset rename: the active name changes, the modified mark stays.
