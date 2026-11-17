@@ -1,0 +1,79 @@
+[
+  {
+    "name": "Does my app recover after outages?",
+    "scenarioName": "Recovery after outages",
+    "description": "Normal link with full outages of growing length in between, and time to recover after each.",
+    "params": [
+      { "key": "base", "label": "Normal condition", "type": "preset", "default": "Good LOS" },
+      { "key": "outages", "label": "Outage lengths", "type": "list", "unit": "s", "default": [3, 10, 30, 90] },
+      { "key": "recovery", "label": "Recovery time after each", "type": "number", "unit": "s", "default": 60 }
+    ],
+    "steps": [
+      { "type": "preset", "preset": "$base", "durationS": "$recovery" },
+      { "forEach": "outages", "as": "len", "steps": [
+          { "type": "outage", "durationS": "$len" },
+          { "type": "preset", "preset": "$base", "durationS": "$recovery" }
+      ] }
+    ]
+  },
+  {
+    "name": "Fly out to the edge of range and back",
+    "scenarioName": "Out to the edge and back",
+    "description": "Start close, fade slowly to the edge of coverage, stay there, then fade back.",
+    "params": [
+      { "key": "near", "label": "Start condition", "type": "preset", "default": "Good LOS" },
+      { "key": "far", "label": "Edge condition", "type": "preset", "default": "Fringe" },
+      { "key": "fade", "label": "Fade time", "type": "number", "unit": "s", "default": 60 },
+      { "key": "hold", "label": "Hold time", "type": "number", "unit": "s", "default": 60 }
+    ],
+    "steps": [
+      { "type": "preset", "preset": "$near", "durationS": "$hold" },
+      { "type": "fade", "preset": "$far", "durationS": "$fade" },
+      { "type": "preset", "preset": "$far", "durationS": "$hold" },
+      { "type": "fade", "preset": "$near", "durationS": "$fade" },
+      { "type": "preset", "preset": "$near", "durationS": "$hold" }
+    ]
+  },
+  {
+    "name": "Unstable link",
+    "scenarioName": "Unstable link",
+    "description": "A base condition with random dropouts laid over it.",
+    "params": [
+      { "key": "base", "label": "Base condition", "type": "preset", "default": "Long range" },
+      { "key": "interval", "label": "Dropouts about every", "type": "number", "unit": "s", "default": 20 },
+      { "key": "length", "label": "Each lasting about", "type": "number", "unit": "s", "default": 3 },
+      { "key": "total", "label": "Total time", "type": "number", "unit": "s", "default": 300 }
+    ],
+    "steps": [
+      { "type": "preset", "preset": "$base", "durationS": 5 },
+      { "type": "dropouts", "durationS": "$total", "meanIntervalS": "$interval", "meanDurationS": "$length" }
+    ]
+  },
+  {
+    "name": "Congested downlink",
+    "scenarioName": "Congested downlink $cap kbit/s",
+    "description": "Downlink capped to a bitrate (e.g. below the video bitrate), then back to normal.",
+    "params": [
+      { "key": "base", "label": "Normal condition", "type": "preset", "default": "Good LOS" },
+      { "key": "cap", "label": "Downlink cap", "type": "number", "unit": "kbit/s", "default": 2000 },
+      { "key": "duration", "label": "Congested for", "type": "number", "unit": "s", "default": 120 }
+    ],
+    "presets": [
+      { "name": "$base, downlink $cap kbit/s", "from": "$base",
+        "description": "$base with the downlink capped to $cap kbit/s",
+        "downlink": { "rateKbit": "$cap" } }
+    ],
+    "steps": [
+      { "type": "preset", "preset": "$base", "durationS": 30 },
+      { "type": "preset", "preset": "$base, downlink $cap kbit/s", "durationS": "$duration" },
+      { "type": "preset", "preset": "$base", "durationS": 30 }
+    ]
+  },
+  {
+    "name": "Blank",
+    "scenarioName": "Untitled",
+    "description": "An empty timeline.",
+    "params": [],
+    "steps": []
+  }
+]

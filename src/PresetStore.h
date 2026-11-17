@@ -52,6 +52,16 @@ public:
     // Preset names used by the scenario's preset/fade steps that don't exist, in step order, unique.
     Q_INVOKABLE QStringList missingPresets(const QVariantMap &scenario) const;
 
+    // Goal-based scenario templates (presets/templates.json, plus
+    // ~/.config/dlsim/templates/*.json): [{name, description, params}].
+    Q_INVOKABLE QVariantList templates() const;
+    // Expands template `index` with values: {name, loop, steps, presets, totalS,
+    // missingPresets}. presets are resolved to full {name, description, uplink,
+    // downlink} and listed only when they don't exist yet.
+    Q_INVOKABLE QVariantMap expandTemplate(int index, const QVariantMap &values) const;
+    // Saves the presets an expanded template needs; false (with presetError) on failure.
+    Q_INVOKABLE bool createTemplatePresets(const QVariantMap &expanded);
+
 Q_SIGNALS:
     void presetsChanged();
     void scenariosChanged();
@@ -72,4 +82,5 @@ private:
     QList<QJsonObject> m_builtinPresets, m_userPresets;
     QList<QJsonObject> m_builtinScenarios, m_userScenarios;
     QString m_presetError, m_scenarioError;
+    QList<QJsonObject> m_templates;
 };

@@ -1,6 +1,7 @@
 #include "PresetStore.h"
 
 #include "Model.h"
+#include "Templates.h"
 
 #include <QDir>
 #include <QFile>
@@ -66,6 +67,17 @@ void PresetStore::load()
         }
     };
     loadDir("presets", m_userPresets, &PresetStore::normalizePreset);
+    m_templates.clear();
+    for (const auto &v : readJsonFile(":/presets/templates.json").array())
+        m_templates << v.toObject();
+    {
+        QDir d(m_dir + "/templates");
+        for (const QString &f : d.entryList({"*.json"}, QDir::Files, QDir::Name)) {
+            const QJsonObject o = readJsonFile(d.filePath(f)).object();
+            if (!o.value("name").toString().isEmpty())
+                m_templates.insert(m_templates.size() - 1, o); // before "Blank"
+        }
+    }
     loadDir("scenarios", m_userScenarios, &PresetStore::normalizeScenario);
     Q_EMIT presetsChanged();
     Q_EMIT scenariosChanged();
@@ -361,4 +373,64 @@ QStringList PresetStore::missingPresets(const QVariantMap &scenario) const
             missing << p;
     }
     return missing;
+}
+
+QVariantList PresetStore::templates() const
+{
+    QVariantList out;
+    for (const auto &t : m_templates)
+        out << QVariantMap{{"name", t.value("name").toString()},
+                           {"description", t.value("description").toString()},
+                           {"params", t.value("params").toArray().toVariantList()}};
+    return out;
+}
+
+QVariantMap PresetStore::expandTemplate(int index, const QVariantMap &values) const
+{
+    if (index < 0 || index >= m_templates.size())
+        return {};
+    const QJsonObject e = dlsim::expandTemplate(m_templates[index], values);
+    QVariantList presets;
+    QStringList created;
+    for (const auto &v : e.value("presets").toArray()) {
+        const QJsonObject p = v.toObject();
+        const QString name = p.value("name").toString().trimmed();
+        if (name.isEmpty() || !preset(name).isEmpty())
+            continue; // already there
+        const QVariantMap from = preset(p.value("from").toString());
+        QJsonObject up = QJsonObject::fromVariantMap(from.value("uplink").toMap());
+        QJsonObject down = QJsonObject::fromVariantMap(from.value("downlink").toMap());
+        for (auto [dir, target] : {std::pair{"uplink", &up}, std::pair{"downlink", &down}}) {
+            const QJsonObject o = p.value(dir).toObject();
+            for (auto it = o.begin(); it != o.end(); ++it)
+                target->insert(it.key(), it.value().isString() ? QJsonValue(it.value().toString().toDouble()) : it.value());
+        }
+        presets << normalizePreset(QJsonObject{{"name", name}, {"description", p.value("description")},
+                                               {"uplink", up}, {"downlink", down}}).toVariantMap();
+        created << name;
+    }
+    const QVariantMap sc{{"steps", e.value("steps").toArray().toVariantList()}};
+    QStringList missing;
+    for (const QString &m : missingPresets(sc))
+        if (!created.contains(m))
+            missing << m;
+    return {{"name", e.value("name").toString()},
+            {"loop", e.value("loop").toBool()},
+            {"steps", sc.value("steps")},
+            {"presets", presets},
+            {"totalS", dlsim::totalDurationS(e.value("steps").toArray())},
+            {"missingPresets", missing}};
+}
+
+bool PresetStore::createTemplatePresets(const QVariantMap &expanded)
+{
+    for (const QVariant &v : expanded.value("presets").toList()) {
+        const QVariantMap p = v.toMap();
+        if (!preset(p.value("name").toString()).isEmpty())
+            continue;
+        if (!savePreset(p.value("name").toString(), p.value("description").toString(), p.value("uplink").toMap(),
+                        p.value("downlink").toMap()))
+            return false;
+    }
+    return true;
 }

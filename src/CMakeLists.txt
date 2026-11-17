@@ -53,7 +53,7 @@ qt_add_resources(dlsim "qml"
 qt_add_resources(dlsim "presets"
     PREFIX "/presets"
     BASE ../presets
-    FILES ../presets/presets.json ../presets/scenarios.json
+    FILES ../presets/presets.json ../presets/scenarios.json ../presets/templates.json
 )
 
 install(TARGETS dlsim RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

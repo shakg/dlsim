@@ -155,7 +155,12 @@ Item {
                     onClicked: root.ApplicationWindow.window.askSave("Export scenario", ["Scenario (*.json)"],
                                    (url) => Presets.exportScenario(root.selectedScenario, url))
                 }
-                Button { text: "New"; onClicked: root.unlessUnsaved(() => Scenario.clear()) }
+                Button {
+                    text: "New…"
+                    onClicked: root.unlessUnsaved(() => templateDialog.open())
+                    ToolTip.visible: hovered && enabled
+                    ToolTip.text: "New scenario from a goal or a blank one"
+                }
             }
             ErrorNote {
                 Layout.fillWidth: true
@@ -192,8 +197,8 @@ Item {
                     anchors.centerIn: parent
                     width: Math.min(parent.width - 20, 440)
                     visible: steps.count === 0
-                    text: "This scenario has no steps yet. Start from a template, or add steps below."
-                    actionText: "New from template…"
+                    text: "This scenario has no steps yet. Start from a goal, or add steps below."
+                    actionText: "New scenario…"
                     onAction: templateDialog.open()
                 }
                 delegate: Rectangle {
@@ -411,35 +416,175 @@ Item {
             }
         }
     }
-    // Templates: copies of the built-in scenarios. Goal-based templates (#17) will replace this list.
+    // New scenario from a goal: pick a template, fill in its values, see the result, create.
     Dialog {
         id: templateDialog
         objectName: "templateDialog"
-        title: "New scenario from template"
+        title: "New scenario"
         modal: true
         focus: true
         parent: Overlay.overlay
         anchors.centerIn: parent
-        width: 460
-        standardButtons: Dialog.Cancel
-        readonly property var templates: Presets.scenarioNames.filter(n => Presets.isBuiltinScenario(n))
-        function total(sc) { return (sc.steps || []).reduce((t, s) => t + s.durationS, 0) }
-        ColumnLayout {
+        width: Math.min(860, parent ? parent.width - 40 : 860)
+        height: Math.min(520, parent ? parent.height - 40 : 520)
+        readonly property var templates: Presets.templates()
+        property int current: 0
+        property var values: ({})
+        readonly property var tpl: templates[current] || ({ params: [] })
+        readonly property var preview: { Presets.presetNames; return Presets.expandTemplate(current, values) }
+        function pick(i) { current = i; values = ({}) }
+        function setValue(k, v) { const m = Object.assign({}, values); m[k] = v; values = m }
+        onOpened: pick(0)
+        footer: DialogButtonBox {
+            Button {
+                text: "Create"
+                highlighted: true
+                enabled: (templateDialog.preview.missingPresets || []).length === 0
+                property string disabledReason: "Missing presets: " + (templateDialog.preview.missingPresets || []).join(", ")
+                DialogButtonBox.buttonRole: DialogButtonBox.AcceptRole
+            }
+            Button { text: "Cancel"; DialogButtonBox.buttonRole: DialogButtonBox.RejectRole }
+        }
+        onAccepted: {
+            const e = preview
+            if (!Presets.createTemplatePresets(e))
+                return
+            Scenario.load({ name: "", loop: e.loop, steps: e.steps })
+            Scenario.name = e.name // a new, unsaved scenario
+        }
+
+        RowLayout {
             anchors.fill: parent
-            spacing: 6
-            Repeater {
-                model: templateDialog.templates
-                delegate: Button {
-                    required property string modelData
-                    readonly property var sc: Presets.scenario(modelData)
-                    Layout.fillWidth: true
-                    text: modelData + "  ·  " + (sc.steps || []).length + " steps · " + root.fmt(templateDialog.total(sc))
-                    onClicked: {
-                        Scenario.load(Presets.scenario(modelData))
-                        Scenario.name = modelData + " (copy)" // a new, unsaved scenario
-                        templateDialog.close()
+            spacing: 12
+            ColumnLayout {
+                Layout.preferredWidth: 300
+                Layout.fillHeight: true
+                spacing: 6
+                Label { text: "What do you want to test?"; font.bold: true }
+                Repeater {
+                    model: templateDialog.templates
+                    delegate: Rectangle {
+                        required property var modelData
+                        required property int index
+                        Layout.fillWidth: true
+                        implicitHeight: tcol.implicitHeight + 10
+                        radius: 4
+                        color: index === templateDialog.current ? "#1f3350" : Theme.panelAlt
+                        border.color: index === templateDialog.current ? Theme.accent : Theme.border
+                        TapHandler { onTapped: templateDialog.pick(index) }
+                        ColumnLayout {
+                            id: tcol
+                            anchors { left: parent.left; right: parent.right; top: parent.top; margins: 5 }
+                            spacing: 1
+                            Label { Layout.fillWidth: true; text: modelData.name; font.bold: true; wrapMode: Text.WordWrap }
+                        }
                     }
                 }
+                Item { Layout.fillHeight: true }
+            }
+            Rectangle { Layout.fillHeight: true; width: 1; color: Theme.border }
+            ColumnLayout {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                spacing: 6
+                Label { text: templateDialog.tpl.name || ""; font.bold: true; font.pixelSize: 15 }
+                Label {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    color: Theme.textDim
+                    text: templateDialog.tpl.description || ""
+                }
+                GridLayout {
+                    columns: 3
+                    columnSpacing: 8
+                    Repeater {
+                        model: templateDialog.tpl.params
+                        delegate: Label {
+                            required property var modelData
+                            required property int index
+                            Layout.row: index; Layout.column: 0
+                            text: modelData.label
+                        }
+                    }
+                    Repeater {
+                        model: templateDialog.tpl.params
+                        delegate: Loader {
+                            required property var modelData
+                            required property int index
+                            Layout.row: index; Layout.column: 1
+                            Layout.preferredWidth: 260
+                            readonly property var param: modelData
+                            readonly property var value: templateDialog.values[modelData.key] !== undefined
+                                                         ? templateDialog.values[modelData.key] : modelData["default"]
+                            sourceComponent: modelData.type === "preset" ? presetField
+                                             : modelData.type === "list" ? listField : numberField
+                        }
+                    }
+                    Repeater {
+                        model: templateDialog.tpl.params
+                        delegate: Label {
+                            required property var modelData
+                            required property int index
+                            Layout.row: index; Layout.column: 2
+                            text: modelData.unit || ""
+                            color: Theme.textDim
+                        }
+                    }
+                }
+                Item { Layout.fillHeight: true }
+                Label {
+                    objectName: "templatePreview"
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    font.bold: true
+                    text: "“" + (templateDialog.preview.name || "") + "”  ·  "
+                          + (templateDialog.preview.steps || []).length + " steps · total "
+                          + root.fmt(templateDialog.preview.totalS || 0)
+                }
+                Label {
+                    Layout.fillWidth: true
+                    visible: (templateDialog.preview.presets || []).length > 0
+                    wrapMode: Text.WordWrap
+                    color: Theme.textDim
+                    text: "Also creates the preset " + (templateDialog.preview.presets || []).map(p => "“" + p.name + "”").join(", ")
+                }
+                Label {
+                    Layout.fillWidth: true
+                    visible: (templateDialog.preview.missingPresets || []).length > 0
+                    wrapMode: Text.WordWrap
+                    color: Theme.danger
+                    text: "Presets not found: " + (templateDialog.preview.missingPresets || []).join(", ")
+                }
+            }
+        }
+
+        Component {
+            id: presetField
+            BoundCombo {
+                values: Presets.presetNames
+                current: parent ? parent.value : ""
+                displayText: currentIndex < 0 ? String(parent ? parent.value : "") + " (missing)" : currentText
+                onPicked: (v) => templateDialog.setValue(parent.param.key, v)
+            }
+        }
+        Component {
+            id: numberField
+            TextField {
+                text: parent ? parent.value : ""
+                selectByMouse: true
+                validator: DoubleValidator { bottom: 0.1; top: 86400; locale: "C" }
+                onTextEdited: if (acceptableInput) templateDialog.setValue(parent.param.key, Number(text))
+            }
+        }
+        Component {
+            id: listField
+            TextField {
+                text: parent ? (parent.value || []).join(", ") : ""
+                selectByMouse: true
+                placeholderText: "e.g. 3, 10, 30"
+                validator: RegularExpressionValidator { regularExpression: /[0-9., ]*/ }
+                onTextEdited: templateDialog.setValue(parent.param.key,
+                    text.split(/[ ,]+/).map(Number).filter(v => v > 0))
             }
         }
     }

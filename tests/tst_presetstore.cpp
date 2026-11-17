@@ -19,6 +19,7 @@ private Q_SLOTS:
     void missingPresets();
     void renamePreset();
     void scenarioStepTypes();
+    void templates();
 
 private:
     static QVariantMap scenario(const QString &name)
@@ -151,6 +152,32 @@ void TestPresetStore::scenarioStepTypes()
     QCOMPARE(got[4].toMap().value("meanIntervalS").toDouble(), 30.0);
     QVERIFY(!got[4].toMap().contains("seed"));
     QVERIFY(s.missingPresets({{"steps", got}}).isEmpty()); // dropouts need no preset
+}
+
+void TestPresetStore::templates()
+{
+    PresetStore s;
+    const QVariantList all = s.templates();
+    int congested = -1;
+    for (int i = 0; i < all.size(); ++i) {
+        const QVariantMap e = s.expandTemplate(i, {});
+        QVERIFY2(e.value("missingPresets").toStringList().isEmpty(), qPrintable(all[i].toMap().value("name").toString()));
+        if (all[i].toMap().value("name").toString() == "Congested downlink")
+            congested = i;
+    }
+    QVERIFY(congested >= 0);
+    const QVariantMap e = s.expandTemplate(congested, {{"cap", 1500}});
+    QCOMPARE(e.value("name").toString(), QStringLiteral("Congested downlink 1500 kbit/s"));
+    const QVariantList presets = e.value("presets").toList();
+    QCOMPARE(presets.size(), 1);
+    const QVariantMap p = presets[0].toMap();
+    QCOMPARE(p.value("name").toString(), QStringLiteral("Good LOS, downlink 1500 kbit/s"));
+    QCOMPARE(p.value("downlink").toMap().value("rateKbit").toDouble(), 1500.0);
+    QCOMPARE(p.value("uplink").toMap().value("delayMs").toDouble(), 8.0); // from Good LOS
+    QCOMPARE(e.value("totalS").toDouble(), 180.0);
+    QVERIFY(s.createTemplatePresets(e));
+    QVERIFY(s.userPresetExists("Good LOS, downlink 1500 kbit/s"));
+    QVERIFY(s.expandTemplate(congested, {{"cap", 1500}}).value("presets").toList().isEmpty()); // exists now
 }
 
 #include "tst_presetstore.moc"

@@ -252,6 +252,16 @@ interval and mean length, laid over the current condition). Play, pause, stop
 and loop, with the current step, step time and total time shown. New steps
 use the previous step's preset, else the active one.
 
+**New…** starts from a goal: *Does my app recover after outages?* (outage
+lengths, recovery time), *Fly out to the edge of range and back* (start and
+edge condition, fade and hold time), *Unstable link* (base condition, dropout
+frequency and length, total time), *Congested downlink* (bitrate cap,
+duration) or *Blank*. Each shows its description, step count and total time
+before creating; the result is a normal scenario to edit and save.
+Templates are data: `presets/templates.json`, plus your own in
+`~/.config/dlsim/templates/*.json` (same format: `params`, `steps` with
+`$param` values and `forEach` over a list, optional derived `presets`).
+
 The manual **Gradual change** (current → preset over T seconds at 1–10 Hz,
 with **Fade** and **Fade back**) and **Random dropouts** switch are quick actions on Home.
 
