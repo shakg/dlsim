@@ -24,6 +24,17 @@ target_link_libraries(dlsim PRIVATE
 set(DLSIM_QML_FILES
     ../qml/Main.qml
     ../qml/Theme.qml
+    ../qml/AppButton.qml
+    ../qml/AppToolButton.qml
+    ../qml/AppTabButton.qml
+    ../qml/AppTextField.qml
+    ../qml/AppSpinBox.qml
+    ../qml/AppComboBox.qml
+    ../qml/AppSlider.qml
+    ../qml/AppCheckBox.qml
+    ../qml/AppRadioButton.qml
+    ../qml/AppDialog.qml
+    ../qml/ModalBackdrop.qml
     ../qml/InterfacesPage.qml
     ../qml/LinkPage.qml
     ../qml/ProfileEditor.qml
@@ -44,7 +55,6 @@ set(DLSIM_QML_FILES
     ../qml/PresetCards.qml
     ../qml/SimpleEditor.qml
     ../qml/Timeline.qml
-    ../qml/Wizard.qml
     ../qml/StatChart.qml
     ../qml/qmldir
 )

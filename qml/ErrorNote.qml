@@ -15,7 +15,7 @@ RowLayout {
         color: Theme.danger
         text: root.text
     }
-    ToolButton {
+    AppToolButton {
         text: "✕"
         Layout.alignment: Qt.AlignTop
         onClicked: root.dismissed()

@@ -20,7 +20,7 @@ ColumnLayout {
         font.pixelSize: Theme.fontBase + 1
         text: root.text
     }
-    Button {
+    AppButton {
         Layout.alignment: Qt.AlignHCenter
         visible: root.actionText.length > 0
         highlighted: true

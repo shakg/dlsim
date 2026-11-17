@@ -8,7 +8,7 @@ import DLSim
 
 ScrollView {
     id: root
-    // false: clicking only selects (e.g. in a wizard); `selected` holds the choice.
+    // false: clicking only selects; `selected` holds the choice.
     property bool applyOnClick: true
     property string selected: activeBase
     property bool showMenus: true
@@ -31,9 +31,9 @@ ScrollView {
         readonly property bool active: root.applyOnClick ? modelData === root.activeBase : modelData === root.selected
         readonly property bool modified: root.applyOnClick && active && root.activeModified
         width: root.availableWidth
-        height: col.implicitHeight + 12
-        radius: 4
-        color: active ? "#1f3350" : hover.hovered ? "#323741" : Theme.panelAlt
+        height: col.implicitHeight + Theme.s(18)
+        radius: Theme.radius
+        color: active ? Theme.selected : hover.hovered ? Theme.hover : Theme.panelAlt
         border.color: active ? Theme.accent : Theme.border
         border.width: active ? 2 : 1
         HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }
@@ -46,8 +46,8 @@ ScrollView {
         }
         ColumnLayout {
             id: col
-            anchors { left: parent.left; right: parent.right; top: parent.top; margins: 6 }
-            spacing: 1
+            anchors { left: parent.left; right: parent.right; top: parent.top; margins: Theme.s(9) }
+            spacing: Theme.s(3)
             RowLayout {
                 Label { text: card.modelData; font.bold: true; Layout.fillWidth: true; elide: Text.ElideRight }
                 Label {
@@ -56,7 +56,7 @@ ScrollView {
                     color: card.modified ? Theme.warn : Theme.accent
                     font.pixelSize: Theme.fontSmall
                 }
-                ToolButton {
+                AppToolButton {
                     visible: root.showMenus
                     text: "…"
                     implicitHeight: Theme.s(22)
@@ -98,8 +98,8 @@ ScrollView {
             RowLayout {
                 visible: card.modified
                 Layout.topMargin: 4
-                Button { text: "Save as new…"; onClicked: root.saveAsRequested() }
-                Button {
+                AppButton { text: "Save as new…"; onClicked: root.saveAsRequested() }
+                AppButton {
                     text: "Revert"
                     onClicked: Link.applyPreset(Presets.preset(card.modelData))
                     ToolTip.visible: hovered
@@ -111,7 +111,7 @@ ScrollView {
 
     Column {
         width: root.availableWidth
-        spacing: 6
+        spacing: Theme.s(8)
         Label { text: "Built-in"; color: Theme.textDim; font.pixelSize: Theme.fontSmall; font.capitalization: Font.AllUppercase }
         Repeater { model: root.builtins; delegate: Card {} }
         Label {

@@ -10,9 +10,9 @@ ColumnLayout {
     RowLayout {
         TabBar {
             id: tabs
-            TabButton { text: "Pending (" + Link.previewLevel + ")"; width: implicitWidth + 12 }
-            TabButton { text: "Full state"; width: implicitWidth + 12 }
-            TabButton { text: "Executed"; width: implicitWidth + 12 }
+            AppTabButton { text: "Pending (" + Link.previewLevel + ")"; width: implicitWidth + 12 }
+            AppTabButton { text: "Full state"; width: implicitWidth + 12 }
+            AppTabButton { text: "Executed"; width: implicitWidth + 12 }
         }
         Label {
             Layout.fillWidth: true
@@ -23,7 +23,7 @@ ColumnLayout {
                   + (Link.previewLevel === "change" ? " (tc qdisc change only)"
                      : Link.previewLevel === "rebuild" ? " (qdiscs and filters rebuilt)" : "")
         }
-        Button {
+        AppButton {
             text: "Copy"
             onClicked: { area.selectAll(); area.copy(); area.deselect() }
         }

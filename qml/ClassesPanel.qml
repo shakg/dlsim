@@ -89,7 +89,7 @@ Section {
                 spacing: 2
                 // Summary: the class as a sentence.
                 RowLayout {
-                    CheckBox {
+                    AppCheckBox {
                         checked: row.modelData.enabled
                         onToggled: {
                             Link.setClassField(row.index, "enabled", checked)
@@ -105,17 +105,17 @@ Section {
                         opacity: row.modelData.enabled ? 1 : 0.5
                         TapHandler { onTapped: root.editIndex = root.editIndex === row.index ? -1 : row.index }
                     }
-                    ToolButton {
+                    AppToolButton {
                         text: root.editIndex === row.index ? "Done" : "Edit"
                         onClicked: root.editIndex = root.editIndex === row.index ? -1 : row.index
                     }
-                    ToolButton { text: "▲"; property string disabledReason: "Already first"; enabled: row.index > 0; onClicked: Link.moveClass(row.index, -1) }
-                    ToolButton { text: "▼"; property string disabledReason: "Already last"; enabled: row.index < list.count - 1; onClicked: Link.moveClass(row.index, 1) }
-                    ToolButton { text: "✕"; onClicked: Link.removeClass(row.index) }
+                    AppToolButton { text: "▲"; property string disabledReason: "Already first"; enabled: row.index > 0; onClicked: Link.moveClass(row.index, -1) }
+                    AppToolButton { text: "▼"; property string disabledReason: "Already last"; enabled: row.index < list.count - 1; onClicked: Link.moveClass(row.index, 1) }
+                    AppToolButton { text: "✕"; onClicked: Link.removeClass(row.index) }
                 }
                 RowLayout {
                     visible: root.editIndex === row.index
-                    TextField {
+                    AppTextField {
                         Layout.fillWidth: true
                         text: row.modelData.name
                         placeholderText: "Name"
@@ -139,7 +139,7 @@ Section {
                         onPicked: (v) => Link.setClassField(row.index, "endpoint", v)
                         ErrorFrame { show: row.modelData.endpoint && row.err("ip") !== "" }
                     }
-                    TextField {
+                    AppTextField {
                         id: ipField
                         visible: !row.modelData.endpoint
                         // Checked while typing; the backend check (row.err) covers stored values.
@@ -161,7 +161,7 @@ Section {
                         readonly property bool hasPorts: row.modelData.proto === "tcp" || row.modelData.proto === "udp"
                         Layout.preferredWidth: Theme.s(58)
                         implicitHeight: portField.implicitHeight
-                        TextField {
+                        AppTextField {
                             id: portField
                             anchors.fill: parent
                             text: parent.hasPorts && row.modelData.port > 0 ? row.modelData.port : ""
@@ -189,7 +189,7 @@ Section {
                         current: row.modelData.mode
                         onPicked: (v) => Link.setClassField(row.index, "mode", v)
                     }
-                    Button {
+                    AppButton {
                         text: "Edit profile…"
                         visible: row.modelData.mode === "custom"
                         onClicked: classDialog.openFor(row.index)
@@ -211,7 +211,7 @@ Section {
     }
 
     RowLayout {
-        Button {
+        AppButton {
             id: addButton
             objectName: "addTrafficButton"
             text: "Add traffic ▾"
@@ -249,7 +249,7 @@ Section {
         }
     }
 
-    Dialog {
+    AppDialog {
         id: classDialog
         property int classIndex: -1
         readonly property var cls: classIndex >= 0 && classIndex < Link.classes.length ? Link.classes[classIndex] : null
@@ -292,7 +292,7 @@ Section {
     }
 
     // Add a class from a traffic template: pick the endpoint, check the port.
-    Dialog {
+    AppDialog {
         id: addDialog
         objectName: "addTrafficDialog"
         property var tpl: ({})
@@ -321,7 +321,7 @@ Section {
             anchors.fill: parent
             columns: 2
             Label { text: "Name" }
-            TextField { id: nameField; Layout.fillWidth: true; selectByMouse: true; placeholderText: "e.g. Telemetry" }
+            AppTextField { id: nameField; Layout.fillWidth: true; selectByMouse: true; placeholderText: "e.g. Telemetry" }
             Label { text: "Protocol" }
             BoundCombo {
                 id: protoPick
@@ -339,7 +339,7 @@ Section {
                 onPicked: (v) => current = v
             }
             Label { text: "Port" }
-            TextField {
+            AppTextField {
                 id: portField2
                 Layout.fillWidth: true
                 enabled: protoPick.current === "tcp" || protoPick.current === "udp"

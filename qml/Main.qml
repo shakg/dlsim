@@ -8,6 +8,7 @@ import DLSim
 
 ApplicationWindow {
     id: win
+    property Item modalBlurSource: appContent
     width: 1366
     height: 768
     minimumWidth: 1100
@@ -25,19 +26,19 @@ ApplicationWindow {
     // Color groups are set explicitly: a group-less assignment may be applied
     // after the disabled one and hide the disabled look.
     palette.window: Theme.bg
-    palette.base: "#16181c"
+    palette.base: Theme.bg
     palette.alternateBase: Theme.panel
-    palette.button: "#2f343c"
+    palette.button: Theme.control
     palette.brightText: "white"
     palette.highlight: Theme.accent
     palette.highlightedText: "white"
-    palette.placeholderText: "#7d838d"
-    palette.light: "#4a505a"
-    palette.midlight: "#3a3f47"
-    palette.mid: "#30343b"
-    palette.dark: "#15171a"
+    palette.placeholderText: Theme.textFaint
+    palette.light: Theme.borderStrong
+    palette.midlight: Theme.border
+    palette.mid: Theme.border
+    palette.dark: Theme.bg
     palette.shadow: "black"
-    palette.toolTipBase: "#2f343c"
+    palette.toolTipBase: Theme.elevated
     palette.toolTipText: Theme.text
     palette.active.windowText: Theme.text
     palette.active.text: Theme.text
@@ -45,10 +46,10 @@ ApplicationWindow {
     palette.inactive.windowText: Theme.text
     palette.inactive.text: Theme.text
     palette.inactive.buttonText: Theme.text
-    palette.disabled.windowText: "#666c75"
-    palette.disabled.text: "#666c75"
-    palette.disabled.buttonText: "#666c75"
-    palette.disabled.button: "#262a30"
+    palette.disabled.windowText: Theme.textFaint
+    palette.disabled.text: Theme.textFaint
+    palette.disabled.buttonText: Theme.textFaint
+    palette.disabled.button: Theme.panelAlt
 
     // Log & commands panel: closed by default, state remembered.
     property bool panelOpen: UiSettings.flag("bottomPanelOpen", false)
@@ -140,7 +141,7 @@ ApplicationWindow {
         }
     }
 
-    Dialog {
+    AppDialog {
         id: shortcutsDialog
         objectName: "shortcutsDialog"
         title: "Keyboard shortcuts"
@@ -192,14 +193,6 @@ ApplicationWindow {
         }
     }
 
-    // First run: no saved configuration yet.
-    Wizard { id: wizard; onFinished: pages.currentIndex = 0 }
-    Timer {
-        running: !Link.hasSavedConfig
-        interval: 300
-        onTriggered: wizard.begin()
-    }
-
     // Shared file dialog: pages call ApplicationWindow.window.askSave/askOpen.
     FileDialog {
         id: fileDialog
@@ -222,7 +215,7 @@ ApplicationWindow {
     }
 
     // Shared confirmation: pages call ApplicationWindow.window.askConfirm(...).
-    Dialog {
+    AppDialog {
         id: confirmDialog
         objectName: "confirmDialog"
         property var callback
@@ -236,8 +229,8 @@ ApplicationWindow {
         onAccepted: { const cb = callback; callback = null; if (cb) cb() }
         onRejected: callback = null
         footer: DialogButtonBox {
-            Button { text: confirmDialog.acceptText; DialogButtonBox.buttonRole: DialogButtonBox.AcceptRole }
-            Button { text: "Cancel"; visible: !confirmDialog.infoOnly; DialogButtonBox.buttonRole: DialogButtonBox.RejectRole }
+            AppButton { text: confirmDialog.acceptText; DialogButtonBox.buttonRole: DialogButtonBox.AcceptRole }
+            AppButton { text: "Cancel"; visible: !confirmDialog.infoOnly; DialogButtonBox.buttonRole: DialogButtonBox.RejectRole }
         }
         Label {
             width: parent.width
@@ -263,15 +256,15 @@ ApplicationWindow {
     }
 
     header: Rectangle {
-        height: Theme.s(54)
+        height: Theme.s(64)
         color: Theme.panel
         border.color: Theme.border
 
         RowLayout {
             anchors.fill: parent
-            anchors.leftMargin: 10
-            anchors.rightMargin: 10
-            spacing: 12
+            anchors.leftMargin: Theme.s(16)
+            anchors.rightMargin: Theme.s(16)
+            spacing: Theme.s(12)
 
             ColumnLayout {
                 spacing: 0
@@ -302,8 +295,8 @@ ApplicationWindow {
             // Edits go live at once with auto-apply; otherwise the bar below the header offers Apply.
             Rectangle {
                 visible: Link.active && Link.autoApply
-                radius: 3
-                color: "#1b3d23"
+                radius: Theme.radiusSmall
+                color: Theme.selected
                 border.color: Theme.ok
                 implicitWidth: liveLabel.implicitWidth + 14
                 implicitHeight: Theme.s(22)
@@ -313,7 +306,7 @@ ApplicationWindow {
                 ToolTip.text: "Edits apply to the link at once. Turn off \"Apply edits immediately\" on the Link tab to batch them."
             }
             // The one Start/Stop for the whole app.
-            Button {
+            AppButton {
                 id: startStop
                 objectName: "startStopButton"
                 readonly property bool running: Link.active || Link.bridgeUp
@@ -329,7 +322,7 @@ ApplicationWindow {
                 ToolTip.text: running ? "Remove all impairment and the bridge" : "Start impairing the link  (Ctrl+Enter)"
             }
             BusyIndicator { running: Link.busy; visible: Link.busy; Layout.preferredHeight: Theme.s(24); Layout.preferredWidth: Theme.s(24) }
-            ToolButton {
+            AppToolButton {
                 id: moreButton
                 text: "⋮"
                 font.pixelSize: Theme.fontBase + 5
@@ -340,10 +333,6 @@ ApplicationWindow {
                     id: moreMenu
                     y: moreButton.height
                     MenuItem {
-                        text: "Run setup again…"
-                        onTriggered: wizard.begin()
-                    }
-                    MenuItem {
                         text: "Reset all…"
                         enabled: Helper.running && !Link.busy
                         onTriggered: win.askConfirm("Reset all",
@@ -353,7 +342,7 @@ ApplicationWindow {
                 }
             }
 
-            ToolButton {
+            AppToolButton {
                 id: bell
                 objectName: "notificationsButton"
                 text: "🔔"
@@ -378,13 +367,13 @@ ApplicationWindow {
                     width: 520
                     height: Math.min(460, win.height - 120)
                     padding: 8
-                    background: Rectangle { color: Theme.panel; border.color: Theme.border; radius: 4 }
+                    background: Rectangle { color: Theme.elevated; border.color: Theme.borderStrong; radius: Theme.radius }
                     ColumnLayout {
                         anchors.fill: parent
                         spacing: 6
                         RowLayout {
                             Label { text: "Notifications"; font.bold: true; Layout.fillWidth: true }
-                            Button { text: "Clear all"; enabled: Notifications.items.length > 0
+                            AppButton { text: "Clear all"; enabled: Notifications.items.length > 0
                                      property string disabledReason: "Nothing to clear"
                                      onClicked: Notifications.clear() }
                         }
@@ -408,7 +397,7 @@ ApplicationWindow {
                                 property bool showDetails: false
                                 width: notifView.width - 12
                                 height: ncol.implicitHeight + 10
-                                radius: 3
+                                radius: Theme.radiusSmall
                                 color: Theme.panelAlt
                                 border.color: modelData.level === "error" ? Theme.danger : modelData.level === "warning" ? Theme.warn : Theme.accent
                                 opacity: modelData.dismissed ? 0.75 : 1
@@ -433,12 +422,12 @@ ApplicationWindow {
                                         text: nrow.modelData.fix
                                     }
                                     RowLayout {
-                                        Button {
+                                        AppButton {
                                             visible: !!nrow.modelData.action
                                             text: nrow.modelData.actionLabel
                                             onClicked: win.runAction(nrow.modelData.action, nrow.modelData.actionArg, nrow.modelData.id)
                                         }
-                                        Button {
+                                        AppButton {
                                             visible: !!nrow.modelData.details && nrow.modelData.details !== nrow.modelData.title
                                             text: nrow.showDetails ? "Hide details" : "Details"
                                             onClicked: nrow.showDetails = !nrow.showDetails
@@ -459,7 +448,7 @@ ApplicationWindow {
                 }
             }
 
-            Button {
+            AppButton {
                 id: cutButton
                 property string disabledReason: "Start the link first"
                 Layout.preferredWidth: Theme.s(170)
@@ -476,7 +465,7 @@ ApplicationWindow {
                     verticalAlignment: Text.AlignVCenter
                 }
                 background: Rectangle {
-                    radius: 4
+                    radius: Theme.radiusSmall
                     color: !cutButton.enabled ? Theme.panelAlt
                            : Link.cut ? (cutButton.down ? "#2e7d32" : Theme.ok)
                            : (cutButton.down ? Theme.dangerDark : Theme.dangerFill)
@@ -561,6 +550,7 @@ ApplicationWindow {
     }
 
     ColumnLayout {
+        id: appContent
         anchors.fill: parent
         spacing: 0
 
@@ -579,7 +569,7 @@ ApplicationWindow {
                     text: "Privileged helper is not running: " + Helper.statusText + ". Impairments cannot be applied."
                     color: "white"
                 }
-                Button { text: "Start helper"; onClicked: Helper.start() }
+                AppButton { text: "Start helper"; onClicked: Helper.start() }
             }
         }
 
@@ -592,7 +582,7 @@ ApplicationWindow {
             Layout.fillWidth: true
             Layout.preferredHeight: visible ? bannerCol.implicitHeight + 12 : 0
             visible: n.id !== undefined
-            color: "#5d1f1f"
+            color: Theme.dangerDark
             property int shownId: n.id === undefined ? -1 : n.id
             onShownIdChanged: showDetails = false
             RowLayout {
@@ -615,7 +605,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         visible: text.length > 0
                         wrapMode: Text.WordWrap
-                        color: "#f4d6d6"
+                        color: "#f4c8ce"
                         text: errorBanner.n.fix || ""
                     }
                     Label {
@@ -623,21 +613,21 @@ ApplicationWindow {
                         visible: errorBanner.showDetails
                         wrapMode: Text.WrapAnywhere
                         font.family: Theme.mono
-                        color: "#f4d6d6"
+                        color: "#f4c8ce"
                         text: errorBanner.n.details || ""
                     }
                 }
-                Button {
+                AppButton {
                     visible: !!errorBanner.n.action
                     text: errorBanner.n.actionLabel || ""
                     onClicked: win.runAction(errorBanner.n.action, errorBanner.n.actionArg, errorBanner.n.id)
                 }
-                Button {
+                AppButton {
                     visible: !!errorBanner.n.details && errorBanner.n.details !== errorBanner.n.title
                     text: errorBanner.showDetails ? "Hide details" : "Details"
                     onClicked: errorBanner.showDetails = !errorBanner.showDetails
                 }
-                ToolButton {
+                AppToolButton {
                     text: "✕"
                     Layout.alignment: Qt.AlignTop
                     onClicked: Notifications.dismiss(errorBanner.n.id)
@@ -653,7 +643,7 @@ ApplicationWindow {
             Layout.fillWidth: true
             Layout.preferredHeight: visible ? 38 : 0
             visible: Link.active && !Link.autoApply && Link.dirty
-            color: "#4a3b0f"
+            color: "#30270d"
             RowLayout {
                 anchors.fill: parent
                 anchors.leftMargin: 10
@@ -666,7 +656,7 @@ ApplicationWindow {
                     text: Link.validationErrors.length > 0 ? "Fix first: " + Link.validationErrors[0]
                                                            : "The link still runs the previous settings."
                 }
-                Button {
+                AppButton {
                     text: "Apply"
                     highlighted: true
                     enabled: Link.validationErrors.length === 0 && !Link.busy && Helper.running
@@ -675,7 +665,7 @@ ApplicationWindow {
                     ToolTip.visible: hovered && enabled
                     ToolTip.text: "Apply  (Ctrl+Enter)"
                 }
-                Button { text: "Discard"; onClicked: Link.discardChanges() }
+                AppButton { text: "Discard"; onClicked: Link.discardChanges() }
             }
         }
 
@@ -693,7 +683,8 @@ ApplicationWindow {
                     id: pages
                     objectName: "pages"
                     Layout.fillWidth: true
-                    component PageTab: TabButton {
+                    background: Rectangle { color: Theme.panel; border.color: Theme.border }
+                    component PageTab: AppTabButton {
                         id: tab
                         ToolTip.visible: hovered && enabled
                         ToolTip.delay: 600
@@ -739,8 +730,9 @@ ApplicationWindow {
                     spacing: 2
                     TabBar {
                         id: bottomTabs
-                        TabButton { text: "Log"; width: implicitWidth + 16 }
-                        TabButton { text: "Commands"; width: implicitWidth + 16 }
+                        background: Rectangle { color: Theme.panel }
+                        AppTabButton { text: "Log"; width: implicitWidth + 16 }
+                        AppTabButton { text: "Commands"; width: implicitWidth + 16 }
                     }
                     StackLayout {
                         Layout.fillWidth: true
@@ -764,7 +756,7 @@ ApplicationWindow {
                 anchors.leftMargin: 4
                 anchors.rightMargin: 8
                 spacing: 6
-                ToolButton {
+                AppToolButton {
                     id: panelToggle
                     objectName: "panelToggle"
                     Layout.preferredHeight: Theme.s(24)
@@ -793,7 +785,7 @@ ApplicationWindow {
                     ToolTip.text: win.unreadErrors + (win.unreadErrors === 1 ? " new error" : " new errors") + " in the log"
                 }
                 Item { Layout.fillWidth: true }
-                ToolButton {
+                AppToolButton {
                     Layout.preferredHeight: Theme.s(24)
                     text: "Shortcuts (F1)"
                     onClicked: shortcutsDialog.open()

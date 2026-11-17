@@ -37,8 +37,6 @@ class LinkController : public QObject
     // What the user calls the two ends; used in labels instead of "ground"/"air".
     Q_PROPERTY(QString groundName READ groundName WRITE setGroundName NOTIFY namesChanged)
     Q_PROPERTY(QString vehicleName READ vehicleName WRITE setVehicleName NOTIFY namesChanged)
-    // A configuration was saved by an earlier run (no first-run wizard then).
-    Q_PROPERTY(bool hasSavedConfig READ hasSavedConfig CONSTANT)
     Q_PROPERTY(bool autoApply READ autoApply WRITE setAutoApply NOTIFY autoApplyChanged)
 
     Q_PROPERTY(bool active READ isActive NOTIFY appliedChanged)
@@ -76,7 +74,6 @@ public:
     QString vehicleName() const { return m_vehicleName; }
     void setGroundName(const QString &n);
     void setVehicleName(const QString &n);
-    bool hasSavedConfig() const { return m_hasSavedConfig; }
     Q_INVOKABLE void clearClasses();
     Q_INVOKABLE void setOtherExcludedValue(bool v) { setOtherExcluded(v); }
 
@@ -188,7 +185,6 @@ private:
     QString m_appliedPreset;
     QString m_groundName = QStringLiteral("Ground");
     QString m_vehicleName = QStringLiteral("Vehicle");
-    bool m_hasSavedConfig = false; // m_activePreset at the last successful apply
     bool m_autoApply = true;
 
     bool m_inFlight = false;

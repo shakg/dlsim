@@ -32,7 +32,7 @@ Item {
         property string subtitle
         property string iface
         readonly property var lv: Sys.live[iface] || ({})
-        radius: 6
+        radius: Theme.radius
         color: Theme.panelAlt
         border.color: Theme.border
         implicitWidth: Theme.s(170)
@@ -90,8 +90,8 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 16
-        spacing: 16
+        anchors.margins: Theme.s(20)
+        spacing: Theme.s(16)
 
         // State and main actions
         RowLayout {
@@ -116,10 +116,10 @@ Item {
             Layout.preferredHeight: Theme.s(230)
             color: Theme.panel
             border.color: Theme.border
-            radius: 4
+            radius: Theme.radiusLarge
             RowLayout {
                 anchors.fill: parent
-                anchors.margins: 20
+                anchors.margins: Theme.s(24)
                 spacing: 12
                 Node {
                     title: root.bridge ? Link.groundName : "This PC"
@@ -140,7 +140,7 @@ Item {
                     Rectangle {
                         Layout.alignment: Qt.AlignHCenter
                         visible: root.bridge
-                        radius: 4
+                        radius: Theme.radiusSmall
                         color: Theme.bg
                         border.color: Theme.accent
                         implicitWidth: dlsimLabel.implicitWidth + 20
@@ -180,7 +180,7 @@ Item {
                         font.pixelSize: Theme.fontBase + 2
                         text: Link.activePreset || "(custom)"
                     }
-                    Button { text: "Change…"; onClicked: root.openTab(2) }
+                    AppButton { text: "Change…"; onClicked: root.openTab(2) }
                 }
             }
 
@@ -189,9 +189,9 @@ Item {
                 Layout.fillWidth: true
                 Layout.alignment: Qt.AlignTop
                 RowLayout {
-                    SpinBox { id: outageSecs; objectName: "outageSeconds"; from: 1; to: 3600; value: 10; editable: true; Layout.preferredWidth: Theme.s(110) }
+                    AppSpinBox { id: outageSecs; objectName: "outageSeconds"; from: 1; to: 3600; value: 10; editable: true; Layout.preferredWidth: Theme.s(110) }
                     Label { text: "s"; color: Theme.textDim }
-                    Button {
+                    AppButton {
                         objectName: "timedOutageButton"
                         Layout.fillWidth: true
                         text: Link.outageRemaining > 0 ? "Cut… " + Link.outageRemaining.toFixed(1) + " s left" : "Cut for " + outageSecs.value + " s"
@@ -212,13 +212,13 @@ Item {
                         elide: Text.ElideRight
                         text: Scenario.name + (Scenario.state === "stopped" ? "" : " · " + Scenario.state)
                     }
-                    Button {
+                    AppButton {
                         text: Scenario.state === "playing" ? "Pause" : Scenario.state === "paused" ? "Resume" : "Play"
                         enabled: Scenario.state !== "stopped" || Scenario.playBlockedReason === ""
                         property string disabledReason: Scenario.playBlockedReason
                         onClicked: Scenario.state === "playing" ? Scenario.pause() : Scenario.play()
                     }
-                    Button { text: "Open…"; onClicked: root.openTab(3) }
+                    AppButton { text: "Open…"; onClicked: root.openTab(3) }
                 }
             }
         }
@@ -251,12 +251,12 @@ Item {
                     }
                     Label { text: "Duration" }
                     RowLayout {
-                        SpinBox { id: fadeSeconds; from: 1; to: 3600; value: 20; editable: true }
+                        AppSpinBox { id: fadeSeconds; from: 1; to: 3600; value: 20; editable: true }
                         Label { text: "s"; color: Theme.textDim }
                     }
                     Label { text: "Update rate" }
                     RowLayout {
-                        SpinBox {
+                        AppSpinBox {
                             from: 1; to: 10; editable: true
                             value: Scenario.fadeRateHz
                             onValueModified: { Scenario.fadeRateHz = value; value = Qt.binding(() => Scenario.fadeRateHz) }
@@ -265,9 +265,9 @@ Item {
                     }
                 }
                 RowLayout {
-                    Button { text: "Fade"; highlighted: true; property string disabledReason: "Choose a preset to fade to"; enabled: fadeTarget.currentIndex >= 0; onClicked: Scenario.fadeTo(fadeTarget.chosen, fadeSeconds.value) }
-                    Button { text: "Fade back"; onClicked: Scenario.fadeBack() }
-                    Button { text: "Stop"; property string disabledReason: "No fade is running"; enabled: Scenario.fading; onClicked: Scenario.stopFade() }
+                    AppButton { text: "Fade"; highlighted: true; property string disabledReason: "Choose a preset to fade to"; enabled: fadeTarget.currentIndex >= 0; onClicked: Scenario.fadeTo(fadeTarget.chosen, fadeSeconds.value) }
+                    AppButton { text: "Fade back"; onClicked: Scenario.fadeBack() }
+                    AppButton { text: "Stop"; property string disabledReason: "No fade is running"; enabled: Scenario.fading; onClicked: Scenario.stopFade() }
                 }
                 ProgressBar {
                     Layout.fillWidth: true

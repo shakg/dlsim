@@ -42,11 +42,11 @@ Item {
                 current: Stats.windowSeconds
                 onPicked: (v) => Stats.windowSeconds = v
             }
-            Button {
+            AppButton {
                 text: "Export CSV…"
                 onClicked: root.ApplicationWindow.window.askSave("Export statistics", ["CSV (*.csv)"], (url) => Stats.exportCsv(url))
             }
-            Button { text: "Clear"; onClicked: Stats.clear() }
+            AppButton { text: "Clear"; onClicked: Stats.clear() }
         }
         // Before the first start there is nothing to chart.
         Rectangle {
@@ -128,7 +128,7 @@ Item {
                         }
                     }
                 }
-                TextField {
+                AppTextField {
                     visible: peerPick.current === "other"
                     Layout.preferredWidth: Theme.s(120)
                     text: Sockets.peerIp
@@ -139,7 +139,7 @@ Item {
                     onEditingFinished: Sockets.peerIp = text
                 }
                 Label { text: ":"; visible: peerPick.current === "other" }
-                TextField {
+                AppTextField {
                     visible: peerPick.current === "other"
                     Layout.preferredWidth: Theme.s(60)
                     text: Sockets.peerPort
@@ -149,18 +149,18 @@ Item {
                     validator: IntValidator { bottom: 1; top: 65535 }
                     onEditingFinished: Sockets.peerPort = Number(text)
                 }
-                Button {
+                AppButton {
                     text: Sockets.running ? "Stop" : "Start"
                     highlighted: !Sockets.running
                     enabled: Helper.running
                     property string disabledReason: "The privileged helper is not running (Start helper, at the top)"
                     onClicked: Sockets.running ? Sockets.stop() : Sockets.start()
                 }
-                Button {
+                AppButton {
                     text: "Export CSV…"
                     onClicked: root.ApplicationWindow.window.askSave("Export socket history", ["CSV (*.csv)"], (url) => Sockets.exportCsv(url))
                 }
-                Button { text: "Clear"; onClicked: Sockets.clear() }
+                AppButton { text: "Clear"; onClicked: Sockets.clear() }
                 Label {
                     Layout.fillWidth: true
                     elide: Text.ElideRight
@@ -202,7 +202,7 @@ Item {
                 text: Sockets.running ? "No TCP connection to " + Sockets.peerIp + ":" + Sockets.peerPort + " right now"
                                       : "Pick the peer and press Start to watch its TCP connections."
             }
-            Button {
+            AppButton {
                 id: detailsToggle
                 property bool open: UiSettings.flag("socketDetails", false)
                 flat: true

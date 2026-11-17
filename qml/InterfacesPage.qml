@@ -56,14 +56,14 @@ Item {
                 title: "Mode"
                 Layout.fillWidth: true
                 RowLayout {
-                    RadioButton {
+                    AppRadioButton {
                         property string disabledReason: "Stop the link to change the mode"
                         text: "Bridge (two NICs, in line)"
                         checked: Link.mode === "bridge"
                         enabled: !Link.active
                         onToggled: if (checked) Link.mode = "bridge"
                     }
-                    RadioButton {
+                    AppRadioButton {
                         property string disabledReason: "Stop the link to change the mode"
                         text: "Host (this PC's NIC)"
                         checked: Link.mode === "host"
@@ -101,7 +101,7 @@ Item {
                         onPicked: (v) => Link.groundIface = v
                         ErrorFrame { show: !!root.errs.groundIface }
                     }
-                    Button {
+                    AppButton {
                         text: "Identify…"
                         enabled: !Link.active
                         property string disabledReason: "Stop the link to change interfaces"
@@ -122,7 +122,7 @@ Item {
                         onPicked: (v) => Link.airIface = v
                         ErrorFrame { show: !!root.errs.airIface }
                     }
-                    Button {
+                    AppButton {
                         objectName: "identifyAir"
                         text: "Identify…"
                         enabled: !Link.active
@@ -170,7 +170,7 @@ Item {
                                               : "Ready. Start the link with Start at the top right."
                     }
                     Item { Layout.fillWidth: true }
-                    Button { text: "Refresh"; onClicked: Sys.refresh() }
+                    AppButton { text: "Refresh"; onClicked: Sys.refresh() }
                 }
             }
 
@@ -191,14 +191,14 @@ Item {
                         required property var modelData
                         required property int index
                         Layout.fillWidth: true
-                        TextField {
+                        AppTextField {
                             Layout.preferredWidth: Theme.s(140)
                             text: epRow.modelData.name
                             selectByMouse: true
                             onEditingFinished: if (text.trim() !== epRow.modelData.name && !Link.renameEndpoint(epRow.modelData.name, text))
                                                    text = epRow.modelData.name
                         }
-                        TextField {
+                        AppTextField {
                             id: epIp
                             Layout.preferredWidth: Theme.s(130)
                             readonly property bool typedValid: text === ""
@@ -216,7 +216,7 @@ Item {
                             text: epRow.modelData.uses === 0 ? "not used" : "used by " + epRow.modelData.uses
                                   + (epRow.modelData.uses === 1 ? " class" : " classes")
                         }
-                        ToolButton {
+                        AppToolButton {
                             text: "✕"
                             onClicked: Link.removeEndpoint(epRow.modelData.name)
                             ToolTip.visible: hovered
@@ -224,7 +224,7 @@ Item {
                         }
                     }
                 }
-                Button { text: "+ Add endpoint"; onClicked: Link.addEndpoint("", "") }
+                AppButton { text: "+ Add endpoint"; onClicked: Link.addEndpoint("", "") }
             }
 
             Section {
@@ -237,7 +237,7 @@ Item {
                         color: Theme.textDim
                         text: root.showAllIfaces ? "All interfaces" : "Physical ports (and the ones in use)"
                     }
-                    CheckBox {
+                    AppCheckBox {
                         objectName: "showAllIfaces"
                         text: "Show all"
                         checked: root.showAllIfaces
@@ -314,7 +314,7 @@ Item {
         }
     }
 
-    Dialog {
+    AppDialog {
         id: confirm
         title: "Impair this interface?"
         modal: true
@@ -340,7 +340,7 @@ Item {
     }
 
     // Unplug-to-identify: the port whose cable is pulled is the one asked for.
-    Dialog {
+    AppDialog {
         id: identifyDialog
         objectName: "identifyDialog"
         property string role: "air"
@@ -366,18 +366,18 @@ Item {
         width: 480
         onClosed: Sys.cancelIdentify()
         footer: DialogButtonBox {
-            Button {
+            AppButton {
                 visible: Sys.identifyState === "found"
                 text: "Use " + Sys.identified
                 highlighted: true
                 onClicked: identifyDialog.use(Sys.identified)
             }
-            Button {
+            AppButton {
                 visible: Sys.identifyState === "ambiguous" || Sys.identifyState === "found"
                 text: "Try again"
                 onClicked: Sys.startIdentify(identifyDialog.candidates)
             }
-            Button { text: "Cancel"; onClicked: identifyDialog.close() }
+            AppButton { text: "Cancel"; onClicked: identifyDialog.close() }
         }
         ColumnLayout {
             anchors.fill: parent

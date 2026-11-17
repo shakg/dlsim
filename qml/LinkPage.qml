@@ -44,7 +44,7 @@ Item {
                 Layout.fillHeight: true
                 RowLayout {
                     Label { text: "Click to apply"; color: Theme.textDim; Layout.fillWidth: true }
-                    Button {
+                    AppButton {
                         text: "Import…"
                         onClicked: root.ApplicationWindow.window.askOpen("Import preset", ["Preset (*.json)"], (url) => {
                             const n = Presets.importPreset(url)
@@ -88,7 +88,7 @@ Item {
                     Layout.fillWidth: true
                     elide: Text.ElideRight
                 }
-                CheckBox {
+                AppCheckBox {
                     text: "Apply edits immediately (live)"
                     checked: Link.autoApply
                     onToggled: {
@@ -118,10 +118,10 @@ Item {
                     objectName: "editorModeTabs"
                     currentIndex: UiSettings.flag("advancedEditor", false) ? 1 : 0
                     onCurrentIndexChanged: UiSettings.setValue("advancedEditor", currentIndex === 1)
-                    TabButton { text: "Simple"; width: implicitWidth + 24 }
-                    TabButton { text: "Advanced"; width: implicitWidth + 24 }
+                    AppTabButton { text: "Simple"; width: implicitWidth + 24 }
+                    AppTabButton { text: "Advanced"; width: implicitWidth + 24 }
                 }
-                CheckBox {
+                AppCheckBox {
                     id: sameBoth
                     visible: modeTabs.currentIndex === 0
                     text: "Same for both directions"
@@ -206,7 +206,7 @@ Item {
         }
     }
 
-    Dialog {
+    AppDialog {
         id: saveDialog
         title: "Save preset"
         modal: true
@@ -224,7 +224,7 @@ Item {
         ColumnLayout {
             anchors.fill: parent
             Label { text: "Name" }
-            TextField {
+            AppTextField {
                 id: nameField
                 Layout.fillWidth: true
                 selectByMouse: true
@@ -236,7 +236,7 @@ Item {
                 }
             }
             Label { text: "Description" }
-            TextField { id: descField; Layout.fillWidth: true; selectByMouse: true }
+            AppTextField { id: descField; Layout.fillWidth: true; selectByMouse: true }
             Label {
                 Layout.fillWidth: true
                 wrapMode: Text.WordWrap
@@ -246,7 +246,7 @@ Item {
         }
     }
 
-    Dialog {
+    AppDialog {
         id: renameDialog
         property string from
         function openFor(n) { from = n; renameField.text = n; open() }
@@ -266,7 +266,7 @@ Item {
         ColumnLayout {
             anchors.fill: parent
             Label { text: "New name" }
-            TextField { id: renameField; Layout.fillWidth: true; selectByMouse: true; onAccepted: renameDialog.accept() }
+            AppTextField { id: renameField; Layout.fillWidth: true; selectByMouse: true; onAccepted: renameDialog.accept() }
         }
     }
 }

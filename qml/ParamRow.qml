@@ -45,7 +45,7 @@ RowLayout {
         ToolTip.text: root.tip
         ToolTip.delay: 500
     }
-    Slider {
+    AppSlider {
         id: slider
         Layout.fillWidth: true
         Layout.minimumWidth: Theme.s(60)
@@ -53,7 +53,7 @@ RowLayout {
         to: root.logScale ? Math.log10(root.to) : root.to
         onMoved: root.edited(root.round(root.logScale ? Math.pow(10, value) : value))
     }
-    TextField {
+    AppTextField {
         id: field
         Layout.preferredWidth: Theme.s(68)
         horizontalAlignment: Text.AlignRight

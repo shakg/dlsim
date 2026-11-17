@@ -3,7 +3,7 @@
 import QtQuick
 import QtQuick.Controls
 
-ComboBox {
+AppComboBox {
     id: root
     property var values: []      // backend values
     property var labels: values  // what is shown

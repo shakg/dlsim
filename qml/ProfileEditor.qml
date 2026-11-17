@@ -129,7 +129,7 @@ ColumnLayout {
             value: root.profile.rateKbit || 1000000
             onEdited: (v) => root.edited("rateKbit", Math.round(v))
         }
-        CheckBox {
+        AppCheckBox {
             text: "∞"
             checked: (root.profile.rateKbit || 0) === 0
             onToggled: {
@@ -151,7 +151,7 @@ ColumnLayout {
             tip: "netem queue size in packets. Auto: delay × rate × 1.5 (min 100 when rate-limited, else 1000)"
             onEdited: (v) => root.edited("limitPkts", Math.round(v))
         }
-        CheckBox {
+        AppCheckBox {
             text: "auto"
             checked: (root.profile.limitPkts || 0) === 0
             onToggled: {
@@ -183,7 +183,7 @@ ColumnLayout {
             onEdited: (v) => root.edited("reorderCorrPct", v)
         }
         Label { text: "gap" }
-        SpinBox {
+        AppSpinBox {
             from: 0; to: 1000; editable: true
             Layout.preferredWidth: Theme.s(90)
             value: root.profile.reorderGap || 0
