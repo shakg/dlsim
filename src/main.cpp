@@ -8,6 +8,7 @@
 #include "SocketMonitor.h"
 #include "StatsPoller.h"
 #include "SystemInfo.h"
+#include "UiSettings.h"
 
 #include <QApplication>
 #include <QDir>
@@ -103,6 +104,7 @@ int main(int argc, char *argv[])
     ScenarioEngine scenario(&link, &presets, &log);
     StatsPoller stats(&helper, &link, &log);
     SocketMonitor sockets(&helper, &log);
+    UiSettings uiSettings;
 
     qmlRegisterSingletonInstance("DLSim", 1, 0, "Log", &log);
     qmlRegisterSingletonInstance("DLSim", 1, 0, "Helper", &helper);
@@ -112,6 +114,7 @@ int main(int argc, char *argv[])
     qmlRegisterSingletonInstance("DLSim", 1, 0, "Scenario", &scenario);
     qmlRegisterSingletonInstance("DLSim", 1, 0, "Stats", &stats);
     qmlRegisterSingletonInstance("DLSim", 1, 0, "Sockets", &sockets);
+    qmlRegisterSingletonInstance("DLSim", 1, 0, "UiSettings", &uiSettings);
 
     QObject::connect(&app, &QCoreApplication::aboutToQuit, [&] {
         scenario.stop();

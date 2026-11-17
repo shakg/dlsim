@@ -44,6 +44,22 @@ ApplicationWindow {
     palette.disabled.buttonText: "#666c75"
     palette.disabled.button: "#262a30"
 
+    // Log & commands panel: closed by default, state remembered.
+    property bool panelOpen: UiSettings.flag("bottomPanelOpen", false)
+    property int unreadErrors: 0
+    onPanelOpenChanged: {
+        UiSettings.setValue("bottomPanelOpen", panelOpen)
+        if (panelOpen)
+            unreadErrors = 0
+    }
+    Connections {
+        target: Log
+        function onLogged(category, message) {
+            if (category === "error" && !win.panelOpen)
+                win.unreadErrors++
+        }
+    }
+
     // Shared file dialog: pages call ApplicationWindow.window.askSave/askOpen.
     FileDialog {
         id: fileDialog
@@ -237,6 +253,7 @@ ApplicationWindow {
         }
 
         SplitView {
+            id: split
             Layout.fillWidth: true
             Layout.fillHeight: true
             orientation: Qt.Vertical
@@ -266,10 +283,20 @@ ApplicationWindow {
                 }
             }
 
+            // Developer detail, collapsed by default; toggled from the status bar.
             Rectangle {
-                SplitView.preferredHeight: 170
+                id: bottomPanel
+                objectName: "bottomPanel"
+                visible: win.panelOpen
+                SplitView.preferredHeight: Number(UiSettings.value("bottomPanelHeight", 170))
                 SplitView.minimumHeight: 80
                 color: Theme.panel
+                onHeightChanged: if (visible && height > 0) panelSaveTimer.restart()
+                Timer {
+                    id: panelSaveTimer
+                    interval: 500
+                    onTriggered: UiSettings.setValue("bottomPanelHeight", Math.round(bottomPanel.height))
+                }
                 ColumnLayout {
                     anchors.fill: parent
                     anchors.margins: 4
@@ -287,6 +314,49 @@ ApplicationWindow {
                         CommandsPanel {}
                     }
                 }
+            }
+        }
+
+        // Status bar
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 26
+            color: Theme.panel
+            Rectangle { width: parent.width; height: 1; color: Theme.border }
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 4
+                anchors.rightMargin: 8
+                spacing: 6
+                ToolButton {
+                    id: panelToggle
+                    objectName: "panelToggle"
+                    Layout.preferredHeight: 24
+                    text: (win.panelOpen ? "▾ " : "▸ ") + "Log && commands"
+                    onClicked: win.panelOpen = !win.panelOpen
+                    ToolTip.visible: hovered
+                    ToolTip.text: win.panelOpen ? "Hide the event log and tc/ip commands"
+                                                : "Show the event log and tc/ip commands"
+                }
+                Rectangle {
+                    visible: win.unreadErrors > 0
+                    radius: height / 2
+                    color: Theme.danger
+                    Layout.preferredHeight: 18
+                    Layout.preferredWidth: Math.max(18, unreadLabel.implicitWidth + 10)
+                    Label {
+                        id: unreadLabel
+                        anchors.centerIn: parent
+                        color: "white"
+                        font.bold: true
+                        text: win.unreadErrors
+                    }
+                    TapHandler { onTapped: win.panelOpen = true }
+                    HoverHandler { id: unreadHover }
+                    ToolTip.visible: unreadHover.hovered
+                    ToolTip.text: win.unreadErrors + (win.unreadErrors === 1 ? " new error" : " new errors") + " in the log"
+                }
+                Item { Layout.fillWidth: true }
             }
         }
     }

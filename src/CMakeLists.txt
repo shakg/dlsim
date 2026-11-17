@@ -10,6 +10,7 @@ qt_add_executable(dlsim
     SocketMonitor.h SocketMonitor.cpp
     StatsPoller.h StatsPoller.cpp
     SystemInfo.h SystemInfo.cpp
+    UiSettings.h
 )
 
 target_compile_definitions(dlsim PRIVATE DLSIM_HELPER_INSTALL_PATH="${DLSIM_HELPER_INSTALL_PATH}")
