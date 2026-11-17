@@ -124,7 +124,7 @@ Section {
                         ErrorFrame { show: row.err("name") !== "" }
                     }
                     BoundCombo {
-                        Layout.preferredWidth: 70
+                        Layout.preferredWidth: Theme.s(70)
                         values: ["any", "tcp", "udp", "icmp"]
                         labels: ["any", "TCP", "UDP", "ICMP"]
                         current: row.modelData.proto
@@ -132,7 +132,7 @@ Section {
                     }
                     Label { text: "to/from"; color: Theme.textDim }
                     BoundCombo {
-                        Layout.preferredWidth: 120
+                        Layout.preferredWidth: Theme.s(120)
                         values: [""].concat(Link.endpoints.map(e => e.name))
                         labels: ["IP address…"].concat(Link.endpoints.map(e => e.name))
                         current: row.modelData.endpoint || ""
@@ -145,7 +145,7 @@ Section {
                         // Checked while typing; the backend check (row.err) covers stored values.
                         readonly property bool typedValid: text === ""
                             || /^((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])$/.test(text)
-                        Layout.preferredWidth: 110
+                        Layout.preferredWidth: Theme.s(110)
                         text: row.modelData.ip
                         placeholderText: "any IP"
                         selectByMouse: true
@@ -159,7 +159,7 @@ Section {
                     // Wrapper so the tooltip still shows while the field is disabled.
                     Item {
                         readonly property bool hasPorts: row.modelData.proto === "tcp" || row.modelData.proto === "udp"
-                        Layout.preferredWidth: 58
+                        Layout.preferredWidth: Theme.s(58)
                         implicitHeight: portField.implicitHeight
                         TextField {
                             id: portField
@@ -183,7 +183,7 @@ Section {
                     Label { text: "Profile"; color: Theme.textDim; Layout.leftMargin: 6; visible: root.editIndex === row.index }
                     BoundCombo {
                         visible: root.editIndex === row.index
-                        Layout.preferredWidth: 150
+                        Layout.preferredWidth: Theme.s(150)
                         values: ["link", "custom", "excluded"]
                         labels: ["Link profile", "Custom profile", "Excluded"]
                         current: row.modelData.mode
@@ -235,7 +235,7 @@ Section {
     RowLayout {
         Label { text: "Other traffic" }
         BoundCombo {
-            Layout.preferredWidth: 160
+            Layout.preferredWidth: Theme.s(160)
             values: [false, true]
             labels: ["Link profile", "Excluded"]
             current: Link.otherExcluded

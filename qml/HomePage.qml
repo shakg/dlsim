@@ -35,12 +35,12 @@ Item {
         radius: 6
         color: Theme.panelAlt
         border.color: Theme.border
-        implicitWidth: 170
-        implicitHeight: 84
+        implicitWidth: Theme.s(170)
+        implicitHeight: Theme.s(84)
         Column {
             anchors.centerIn: parent
             spacing: 4
-            Label { anchors.horizontalCenter: parent.horizontalCenter; text: parent.parent.title; font.bold: true; font.pixelSize: 16 }
+            Label { anchors.horizontalCenter: parent.horizontalCenter; text: parent.parent.title; font.bold: true; font.pixelSize: Theme.fontBase + 3 }
             Label {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: parent.parent.subtitle
@@ -52,7 +52,7 @@ Item {
                 visible: parent.parent.iface !== "" && parent.parent.lv.carrier !== undefined
                 text: parent.parent.lv.carrier === 1 ? "● cable in" : parent.parent.lv.carrier === 0 ? "○ cable unplugged" : "– interface down"
                 color: parent.parent.lv.carrier === 1 ? Theme.ok : Theme.danger
-                font.pixelSize: 11
+                font.pixelSize: Theme.fontSmall
             }
         }
     }
@@ -78,7 +78,7 @@ Item {
             Layout.alignment: Qt.AlignHCenter
             text: Link.cut && Link.active ? "100% loss (cut)" : Theme.describeProfile(parent.profile)
             color: Link.cut && Link.active ? Theme.danger : Theme.text
-            font.pixelSize: 14
+            font.pixelSize: Theme.fontBase + 1
         }
         Label {
             Layout.alignment: Qt.AlignHCenter
@@ -113,7 +113,7 @@ Item {
         // Diagram
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 230
+            Layout.preferredHeight: Theme.s(230)
             color: Theme.panel
             border.color: Theme.border
             radius: 4
@@ -177,7 +177,7 @@ Item {
                     Label {
                         Layout.fillWidth: true
                         elide: Text.ElideRight
-                        font.pixelSize: 15
+                        font.pixelSize: Theme.fontBase + 2
                         text: Link.activePreset || "(custom)"
                     }
                     Button { text: "Change…"; onClicked: root.openTab(2) }
@@ -189,7 +189,7 @@ Item {
                 Layout.fillWidth: true
                 Layout.alignment: Qt.AlignTop
                 RowLayout {
-                    SpinBox { id: outageSecs; objectName: "outageSeconds"; from: 1; to: 3600; value: 10; editable: true; Layout.preferredWidth: 110 }
+                    SpinBox { id: outageSecs; objectName: "outageSeconds"; from: 1; to: 3600; value: 10; editable: true; Layout.preferredWidth: Theme.s(110) }
                     Label { text: "s"; color: Theme.textDim }
                     Button {
                         objectName: "timedOutageButton"

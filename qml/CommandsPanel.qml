@@ -37,7 +37,7 @@ ColumnLayout {
             selectByMouse: true
             wrapMode: TextEdit.NoWrap
             font.family: Theme.mono
-            font.pixelSize: 11
+            font.pixelSize: Theme.fontSmall
             color: Theme.text
             background: Rectangle { color: Theme.bg }
             text: tabs.currentIndex === 0 ? Link.previewDiff

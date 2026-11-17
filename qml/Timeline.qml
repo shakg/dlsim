@@ -34,7 +34,7 @@ Item {
         return m > 0 ? m + ":" + (r < 10 ? "0" : "") + r : r + " s"
     }
     function typeColor(t) {
-        return t === "outage" ? Theme.danger : t === "fade" ? "#8e5ea2" : t === "dropouts" ? "#9c7a12" : "#2f4b6e"
+        return t === "outage" ? Theme.dangerFill : t === "fade" ? "#8e5ea2" : t === "dropouts" ? "#9c7a12" : "#2f4b6e"
     }
     function shortLabel(s) {
         return s.type === "outage" ? "Drop link"
@@ -203,7 +203,7 @@ Item {
             line("delayDown", maxDelay, Theme.down, false)
             ctx.setLineDash([])
             ctx.fillStyle = Theme.textDim
-            ctx.font = "10px sans-serif"
+            ctx.font = Theme.fontSmall + "px sans-serif"
             ctx.fillText("delay max " + Math.round(maxDelay) + " ms", 4, 11)
             ctx.fillText("loss % (dashed)", width - 80, 11)
         }
@@ -218,7 +218,7 @@ Item {
             y: root.graphTop + root.graphH + 2
             text: root.fmt(index / 5 * root.total)
             color: Theme.textDim
-            font.pixelSize: 10
+            font.pixelSize: Theme.fontSmall
         }
     }
 
@@ -245,7 +245,7 @@ Item {
             y: root.graphTop + 14
             text: root.fmt(Scenario.totalElapsed) + (Scenario.loop ? " · loop " + (Scenario.loopCount + 1) : "")
             color: "white"
-            font.pixelSize: 11
+            font.pixelSize: Theme.fontSmall
             font.bold: true
         }
     }

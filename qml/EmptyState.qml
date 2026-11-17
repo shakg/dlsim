@@ -17,7 +17,7 @@ ColumnLayout {
         horizontalAlignment: Text.AlignHCenter
         wrapMode: Text.WordWrap
         color: Theme.textDim
-        font.pixelSize: 14
+        font.pixelSize: Theme.fontBase + 1
         text: root.text
     }
     Button {

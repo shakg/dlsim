@@ -105,7 +105,7 @@ Item {
 
             RowLayout {
                 BoundCombo {
-                    Layout.preferredWidth: 200
+                    Layout.preferredWidth: Theme.s(200)
                     values: Presets.scenarioNames
                     current: root.selectedScenario
                     onPicked: (v) => root.selectedScenario = v
@@ -179,7 +179,7 @@ Item {
             RowLayout {
                 Label { text: "Name" }
                 TextField {
-                    Layout.preferredWidth: 220
+                    Layout.preferredWidth: Theme.s(220)
                     text: Scenario.name
                     selectByMouse: true
                     onEditingFinished: Scenario.name = text
@@ -203,7 +203,7 @@ Item {
                 visible: Scenario.steps.length > 0
                 text: "Steps"
                 color: Theme.textDim
-                font.pixelSize: 11
+                font.pixelSize: Theme.fontSmall
                 font.capitalization: Font.AllUppercase
             }
 
@@ -233,7 +233,7 @@ Item {
                     readonly property bool missingPreset: (modelData.type === "preset" || modelData.type === "fade")
                                                          && Presets.presetNames.indexOf(modelData.preset) < 0
                     width: steps.width - 10
-                    height: missingPreset ? 58 : 36
+                    height: missingPreset ? Theme.s(58) : Theme.s(36)
                     radius: 3
                     color: current ? "#21406b" : missingPreset ? "#3a2226"
                            : index === timeline.selected ? "#2c3a4d" : Theme.panelAlt
@@ -251,20 +251,20 @@ Item {
                     }
                     Label {
                         visible: stepRow.missingPreset
-                        x: 36
-                        y: 36
+                        x: Theme.s(36)
+                        y: Theme.s(36)
                         color: Theme.danger
                         text: stepRow.modelData.preset ? "Preset '" + stepRow.modelData.preset + "' not found"
                                                        : "No preset chosen"
                     }
                     RowLayout {
                         anchors { left: parent.left; right: parent.right; top: parent.top }
-                        height: 36
+                        height: Theme.s(36)
                         anchors.leftMargin: 6
                         anchors.rightMargin: 4
-                        Label { text: (stepRow.index + 1) + "."; Layout.preferredWidth: 24; font.bold: stepRow.current }
+                        Label { text: (stepRow.index + 1) + "."; Layout.preferredWidth: Theme.s(24); font.bold: stepRow.current }
                         BoundCombo {
-                            Layout.preferredWidth: 170
+                            Layout.preferredWidth: Theme.s(170)
                             values: ["preset", "fade", "outage", "dropouts"]
                             labels: ["Hold condition", "Gradually change to", "Drop link", "Random dropouts"]
                             current: stepRow.modelData.type
@@ -295,7 +295,7 @@ Item {
                             spacing: 4
                             Label { text: "outages about every"; color: Theme.textDim }
                             TextField {
-                                Layout.preferredWidth: 52
+                                Layout.preferredWidth: Theme.s(52)
                                 horizontalAlignment: Text.AlignRight
                                 text: stepRow.modelData.meanIntervalS === undefined ? 30 : stepRow.modelData.meanIntervalS
                                 selectByMouse: true
@@ -304,7 +304,7 @@ Item {
                             }
                             Label { text: "s, lasting about"; color: Theme.textDim }
                             TextField {
-                                Layout.preferredWidth: 52
+                                Layout.preferredWidth: Theme.s(52)
                                 horizontalAlignment: Text.AlignRight
                                 text: stepRow.modelData.meanDurationS === undefined ? 3 : stepRow.modelData.meanDurationS
                                 selectByMouse: true
@@ -315,7 +315,7 @@ Item {
                             Item { Layout.fillWidth: true }
                         }
                         TextField {
-                            Layout.preferredWidth: 64
+                            Layout.preferredWidth: Theme.s(64)
                             horizontalAlignment: Text.AlignRight
                             text: stepRow.modelData.durationS
                             selectByMouse: true
@@ -324,7 +324,7 @@ Item {
                         }
                         Label { text: "s"; color: Theme.textDim }
                         Label {
-                            Layout.preferredWidth: 56
+                            Layout.preferredWidth: Theme.s(56)
                             visible: stepRow.current
                             text: Scenario.stepElapsed.toFixed(1)
                             color: Theme.accent
@@ -493,7 +493,7 @@ Item {
             anchors.fill: parent
             spacing: 12
             ColumnLayout {
-                Layout.preferredWidth: 300
+                Layout.preferredWidth: Theme.s(300)
                 Layout.fillHeight: true
                 spacing: 6
                 Label { text: "What do you want to test?"; font.bold: true }
@@ -523,7 +523,7 @@ Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 spacing: 6
-                Label { text: templateDialog.tpl.name || ""; font.bold: true; font.pixelSize: 15 }
+                Label { text: templateDialog.tpl.name || ""; font.bold: true; font.pixelSize: Theme.fontBase + 2 }
                 Label {
                     Layout.fillWidth: true
                     wrapMode: Text.WordWrap
@@ -548,7 +548,7 @@ Item {
                             required property var modelData
                             required property int index
                             Layout.row: index; Layout.column: 1
-                            Layout.preferredWidth: 260
+                            Layout.preferredWidth: Theme.s(260)
                             readonly property var param: modelData
                             readonly property var value: templateDialog.values[modelData.key] !== undefined
                                                          ? templateDialog.values[modelData.key] : modelData["default"]
@@ -663,14 +663,14 @@ Item {
                 delegate: Rectangle {
                     required property var modelData
                     width: reportList.width - 10
-                    height: 40
+                    height: Theme.s(40)
                     radius: 3
                     color: Theme.panelAlt
                     RowLayout {
                         anchors.fill: parent
                         anchors.leftMargin: 8
                         anchors.rightMargin: 4
-                        Label { text: modelData.name; font.bold: true; Layout.preferredWidth: 220; elide: Text.ElideRight }
+                        Label { text: modelData.name; font.bold: true; Layout.preferredWidth: Theme.s(220); elide: Text.ElideRight }
                         Label {
                             Layout.fillWidth: true
                             elide: Text.ElideRight

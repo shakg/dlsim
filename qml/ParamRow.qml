@@ -37,7 +37,7 @@ RowLayout {
 
     Label {
         text: root.label
-        Layout.preferredWidth: 104
+        Layout.preferredWidth: Theme.s(104)
         elide: Text.ElideRight
         color: root.error ? Theme.danger : root.enabled ? Theme.text : Theme.textDim
         HoverHandler { id: hover }
@@ -48,14 +48,14 @@ RowLayout {
     Slider {
         id: slider
         Layout.fillWidth: true
-        Layout.minimumWidth: 60
+        Layout.minimumWidth: Theme.s(60)
         from: root.logScale ? Math.log10(Math.max(root.from, 1e-6)) : root.from
         to: root.logScale ? Math.log10(root.to) : root.to
         onMoved: root.edited(root.round(root.logScale ? Math.pow(10, value) : value))
     }
     TextField {
         id: field
-        Layout.preferredWidth: 68
+        Layout.preferredWidth: Theme.s(68)
         horizontalAlignment: Text.AlignRight
         selectByMouse: true
         validator: DoubleValidator {
@@ -76,7 +76,7 @@ RowLayout {
     }
     Label {
         text: root.suffix
-        Layout.preferredWidth: 30
+        Layout.preferredWidth: Theme.s(30)
         color: Theme.textDim
     }
 }

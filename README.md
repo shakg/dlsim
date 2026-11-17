@@ -207,7 +207,9 @@ condition (preset cards) and Review + Start. Back and Next keep your choices;
 Cancel leaves the app as it was. Run it again from **⋮ → Run setup again…**.
 
 The window has a header, five tabs, a status bar and a collapsible bottom
-panel. It fits 1366×768.
+panel. Text follows the desktop font size (at least 13 px) and the zoom;
+sidebars take a share of the window within limits, so the layout fits
+1366×768 and uses the space on 1920×1080 and 2560×1440.
 
 **Header.** Helper status, a state badge (Off / Running / Link cut /
 Scenario step N of M / Fading), the interfaces and the active preset. On the
@@ -330,7 +332,8 @@ or a rebuild), **Full state**
 
 **Keyboard.** Space: CUT / RESTORE (not while typing; Esc leaves a text
 field). Ctrl+Enter: Start, or Apply. Ctrl+P: play/pause the scenario; Ctrl+.:
-stop it. Ctrl+1…5: tabs. F1: the list of shortcuts.
+stop it. Ctrl+1…5: tabs. Ctrl+= / Ctrl+-: bigger / smaller text (Ctrl+0 resets;
+remembered). F1: the list of shortcuts.
 
 Hover a disabled control to see why it is disabled.
 

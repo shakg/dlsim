@@ -15,7 +15,13 @@ ApplicationWindow {
     visible: true
     title: "DLSim — datalink emulator"
     color: Theme.bg
-    font.pixelSize: 12
+    // Base font: the system size (at least 13 px) times the zoom (Ctrl+= / Ctrl+- / Ctrl+0).
+    property real zoom: Number(UiSettings.value("zoom", 1.0))
+    onZoomChanged: UiSettings.setValue("zoom", zoom)
+    function setZoom(z) { zoom = Math.round(Math.min(2.0, Math.max(0.8, z)) * 10) / 10 }
+    readonly property int baseFont: Math.round(Math.max(13, UiSettings.systemFontPx()) * zoom)
+    Binding { target: Theme; property: "fontBase"; value: win.baseFont }
+    font.pixelSize: Theme.fontBase
     // Color groups are set explicitly: a group-less assignment may be applied
     // after the disabled one and hide the disabled look.
     palette.window: Theme.bg
@@ -117,6 +123,9 @@ ApplicationWindow {
     Shortcut { sequences: ["Ctrl+Return", "Ctrl+Enter"]; context: Qt.ApplicationShortcut; enabled: win.shortcutsOn; onActivated: win.startOrApply() }
     Shortcut { sequence: "Ctrl+P"; context: Qt.ApplicationShortcut; enabled: win.shortcutsOn; onActivated: win.togglePlay() }
     Shortcut { sequence: "Ctrl+."; context: Qt.ApplicationShortcut; enabled: win.shortcutsOn; onActivated: Scenario.stop() }
+    Shortcut { sequences: ["Ctrl+=", "Ctrl++", StandardKey.ZoomIn]; context: Qt.ApplicationShortcut; onActivated: win.setZoom(win.zoom + 0.1) }
+    Shortcut { sequences: ["Ctrl+-", StandardKey.ZoomOut]; context: Qt.ApplicationShortcut; onActivated: win.setZoom(win.zoom - 0.1) }
+    Shortcut { sequence: "Ctrl+0"; context: Qt.ApplicationShortcut; onActivated: win.setZoom(1.0) }
     Shortcut { sequence: "F1"; context: Qt.ApplicationShortcut; enabled: win.shortcutsOn; onActivated: shortcutsDialog.open() }
     Repeater {
         model: 5
@@ -148,6 +157,7 @@ ApplicationWindow {
             ["Ctrl+P", "Play / pause the scenario"],
             ["Ctrl+.", "Stop the scenario"],
             ["Ctrl+1 … " + pages.count, "Switch tabs"],
+            ["Ctrl+= / Ctrl+-", "Bigger / smaller text (Ctrl+0: normal)"],
             ["F1", "This list"],
         ]
         GridLayout {
@@ -253,7 +263,7 @@ ApplicationWindow {
     }
 
     header: Rectangle {
-        height: 54
+        height: Theme.s(54)
         color: Theme.panel
         border.color: Theme.border
 
@@ -265,20 +275,20 @@ ApplicationWindow {
 
             ColumnLayout {
                 spacing: 0
-                Label { text: "DLSim"; font.pixelSize: 18; font.bold: true }
+                Label { text: "DLSim"; font.pixelSize: Theme.fontBase + 5; font.bold: true }
                 RowLayout {
                     spacing: 4
                     Rectangle {
                         width: 8; height: 8; radius: 4
                         color: Helper.state === 2 ? Theme.ok : Helper.state === 1 ? Theme.warn : Theme.danger
                     }
-                    Label { text: Helper.statusText; color: Theme.textDim; font.pixelSize: 11 }
+                    Label { text: Helper.statusText; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
                 }
             }
             Rectangle { width: 1; Layout.fillHeight: true; Layout.margins: 8; color: Theme.border }
             StateBadge { objectName: "headerStateBadge" }
             Label {
-                Layout.maximumWidth: 360
+                Layout.maximumWidth: Theme.s(360)
                 elide: Text.ElideRight
                 color: Theme.textDim
                 text: (Link.mode === "bridge" ? (Link.groundIface || "?") + " ⇄ " + (Link.airIface || "?")
@@ -296,7 +306,7 @@ ApplicationWindow {
                 color: "#1b3d23"
                 border.color: Theme.ok
                 implicitWidth: liveLabel.implicitWidth + 14
-                implicitHeight: 22
+                implicitHeight: Theme.s(22)
                 Label { id: liveLabel; anchors.centerIn: parent; text: "● LIVE"; color: Theme.ok; font.bold: true }
                 HoverHandler { id: liveHover }
                 ToolTip.visible: liveHover.hovered
@@ -307,7 +317,7 @@ ApplicationWindow {
                 id: startStop
                 objectName: "startStopButton"
                 readonly property bool running: Link.active || Link.bridgeUp
-                Layout.preferredWidth: 96
+                Layout.preferredWidth: Theme.s(96)
                 text: running ? "Stop" : "Start"
                 highlighted: !running
                 enabled: running ? Helper.running && !Link.busy : win.startBlockedReason === ""
@@ -318,11 +328,11 @@ ApplicationWindow {
                 ToolTip.visible: hovered && enabled
                 ToolTip.text: running ? "Remove all impairment and the bridge" : "Start impairing the link  (Ctrl+Enter)"
             }
-            BusyIndicator { running: Link.busy; visible: Link.busy; Layout.preferredHeight: 24; Layout.preferredWidth: 24 }
+            BusyIndicator { running: Link.busy; visible: Link.busy; Layout.preferredHeight: Theme.s(24); Layout.preferredWidth: Theme.s(24) }
             ToolButton {
                 id: moreButton
                 text: "⋮"
-                font.pixelSize: 18
+                font.pixelSize: Theme.fontBase + 5
                 onClicked: moreMenu.open()
                 ToolTip.visible: hovered
                 ToolTip.text: "More"
@@ -347,7 +357,7 @@ ApplicationWindow {
                 id: bell
                 objectName: "notificationsButton"
                 text: "🔔"
-                font.pixelSize: 16
+                font.pixelSize: Theme.fontBase + 3
                 onClicked: { notificationList.open(); Notifications.markRead() }
                 ToolTip.visible: hovered
                 ToolTip.text: "Errors and warnings of this session"
@@ -355,10 +365,10 @@ ApplicationWindow {
                     visible: Notifications.unread > 0
                     anchors { right: parent.right; top: parent.top; rightMargin: 2; topMargin: 2 }
                     width: Math.max(16, bellCount.implicitWidth + 6)
-                    height: 16
+                    height: Theme.s(16)
                     radius: 8
-                    color: Theme.danger
-                    Label { id: bellCount; anchors.centerIn: parent; text: Notifications.unread; color: "white"; font.pixelSize: 10; font.bold: true }
+                    color: Theme.dangerFill
+                    Label { id: bellCount; anchors.centerIn: parent; text: Notifications.unread; color: "white"; font.pixelSize: Theme.fontSmall; font.bold: true }
                 }
                 Popup {
                     id: notificationList
@@ -452,11 +462,11 @@ ApplicationWindow {
             Button {
                 id: cutButton
                 property string disabledReason: "Start the link first"
-                Layout.preferredWidth: 170
-                Layout.preferredHeight: 42
+                Layout.preferredWidth: Theme.s(170)
+                Layout.preferredHeight: Theme.s(42)
                 enabled: Link.active
                 text: Link.cut ? "RESTORE" : "CUT LINK"
-                font.pixelSize: 16
+                font.pixelSize: Theme.fontBase + 3
                 font.bold: true
                 contentItem: Label {
                     text: cutButton.text
@@ -469,7 +479,7 @@ ApplicationWindow {
                     radius: 4
                     color: !cutButton.enabled ? Theme.panelAlt
                            : Link.cut ? (cutButton.down ? "#2e7d32" : Theme.ok)
-                           : (cutButton.down ? Theme.dangerDark : Theme.danger)
+                           : (cutButton.down ? Theme.dangerDark : Theme.dangerFill)
                 }
                 onClicked: Link.setCut(!Link.cut)
                 ToolTip.visible: hovered && enabled
@@ -557,7 +567,7 @@ ApplicationWindow {
         // Helper lost / not started
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 34
+            Layout.preferredHeight: Theme.s(34)
             visible: Helper.state === 0 || (Helper.state === 3 && Notifications.current.action !== "retry-helper")
             color: Theme.dangerDark
             RowLayout {
@@ -746,7 +756,7 @@ ApplicationWindow {
         // Status bar
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 26
+            Layout.preferredHeight: Theme.s(26)
             color: Theme.panel
             Rectangle { width: parent.width; height: 1; color: Theme.border }
             RowLayout {
@@ -757,7 +767,7 @@ ApplicationWindow {
                 ToolButton {
                     id: panelToggle
                     objectName: "panelToggle"
-                    Layout.preferredHeight: 24
+                    Layout.preferredHeight: Theme.s(24)
                     text: (win.panelOpen ? "▾ " : "▸ ") + "Log && commands"
                     onClicked: win.panelOpen = !win.panelOpen
                     ToolTip.visible: hovered && enabled
@@ -767,8 +777,8 @@ ApplicationWindow {
                 Rectangle {
                     visible: win.unreadErrors > 0
                     radius: height / 2
-                    color: Theme.danger
-                    Layout.preferredHeight: 18
+                    color: Theme.dangerFill
+                    Layout.preferredHeight: Theme.s(18)
                     Layout.preferredWidth: Math.max(18, unreadLabel.implicitWidth + 10)
                     Label {
                         id: unreadLabel
@@ -784,7 +794,7 @@ ApplicationWindow {
                 }
                 Item { Layout.fillWidth: true }
                 ToolButton {
-                    Layout.preferredHeight: 24
+                    Layout.preferredHeight: Theme.s(24)
                     text: "Shortcuts (F1)"
                     onClicked: shortcutsDialog.open()
                 }

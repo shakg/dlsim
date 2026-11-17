@@ -21,7 +21,7 @@ ColumnLayout {
 
     component SubHeader: Label {
         color: Theme.textDim
-        font.pixelSize: 11
+        font.pixelSize: Theme.fontSmall
         font.capitalization: Font.AllUppercase
         Layout.topMargin: 6
     }
@@ -30,7 +30,7 @@ ColumnLayout {
         text: root.title
         color: root.accent
         font.bold: true
-        font.pixelSize: 14
+        font.pixelSize: Theme.fontBase + 1
     }
 
     SubHeader { text: "Delay" }
@@ -55,7 +55,7 @@ ColumnLayout {
     RowLayout {
         enabled: root.hasJitter
         property string disabledReason: "Set a jitter above 0 first"
-        Label { text: "Distribution"; Layout.preferredWidth: 104; color: parent.enabled ? Theme.text : Theme.textDim }
+        Label { text: "Distribution"; Layout.preferredWidth: Theme.s(104); color: parent.enabled ? Theme.text : Theme.textDim }
         BoundCombo {
             Layout.fillWidth: true
             values: ["uniform", "normal", "pareto", "paretonormal"]
@@ -67,7 +67,7 @@ ColumnLayout {
 
     SubHeader { text: "Loss" }
     RowLayout {
-        Label { text: "Model"; Layout.preferredWidth: 104 }
+        Label { text: "Model"; Layout.preferredWidth: Theme.s(104) }
         BoundCombo {
             Layout.fillWidth: true
             values: ["random", "gemodel"]
@@ -185,7 +185,7 @@ ColumnLayout {
         Label { text: "gap" }
         SpinBox {
             from: 0; to: 1000; editable: true
-            Layout.preferredWidth: 90
+            Layout.preferredWidth: Theme.s(90)
             value: root.profile.reorderGap || 0
             onValueModified: {
                 root.edited("reorderGap", value)

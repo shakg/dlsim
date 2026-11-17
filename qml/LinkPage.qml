@@ -29,8 +29,12 @@ Item {
         spacing: 8
 
         ColumnLayout {
-            Layout.preferredWidth: 300
-            Layout.maximumWidth: 300
+            // Proportional with limits; min = preferred = max so the scrolling cards can't
+            // feed their scrollbar width back into the layout.
+            readonly property int sideWidth: Math.max(Theme.s(280), Math.min(Math.round(root.width * 0.24), Theme.s(420)))
+            Layout.minimumWidth: sideWidth
+            Layout.preferredWidth: sideWidth
+            Layout.maximumWidth: sideWidth
             Layout.fillHeight: true
             spacing: 8
 
@@ -130,7 +134,7 @@ Item {
                 objectName: "linkSummary"
                 Layout.fillWidth: true
                 elide: Text.ElideRight
-                font.pixelSize: 14
+                font.pixelSize: Theme.fontBase + 1
                 text: Link.summary
             }
 
@@ -150,7 +154,7 @@ Item {
                         SimpleEditor {
                             visible: sameBoth.checked
                             Layout.fillWidth: true
-                            Layout.maximumWidth: 640
+                            Layout.maximumWidth: Theme.s(640)
                             Layout.alignment: Qt.AlignTop
                             dir: "both"
                             title: "Both directions"
@@ -251,7 +255,7 @@ Item {
         focus: true
         parent: Overlay.overlay
         anchors.centerIn: parent
-        width: 380
+        width: Theme.s(380)
         standardButtons: Dialog.Ok | Dialog.Cancel
         onOpened: { renameField.forceActiveFocus(); renameField.selectAll() }
         onAccepted: {

@@ -14,11 +14,11 @@ Item {
         property color color
         property var s: ({})
         spacing: 10
-        Label { text: name; color: parent.color; font.bold: true; Layout.preferredWidth: 150; elide: Text.ElideRight }
-        Label { text: root.rate(s.kbps || 0); Layout.preferredWidth: 100 }
-        Label { text: (s.pps || 0).toFixed(0) + " pkt/s"; Layout.preferredWidth: 80 }
-        Label { text: (s.dropsPerSec || 0).toFixed(1) + " drop/s"; Layout.preferredWidth: 90; color: (s.dropsPerSec || 0) > 0 ? Theme.danger : Theme.text }
-        Label { text: "backlog " + ((s.backlog || 0) / 1024).toFixed(1) + " KiB / " + (s.qlen || 0) + " pkt"; Layout.preferredWidth: 170 }
+        Label { text: name; color: parent.color; font.bold: true; Layout.preferredWidth: Theme.s(150); elide: Text.ElideRight }
+        Label { text: root.rate(s.kbps || 0); Layout.preferredWidth: Theme.s(100) }
+        Label { text: (s.pps || 0).toFixed(0) + " pkt/s"; Layout.preferredWidth: Theme.s(80) }
+        Label { text: (s.dropsPerSec || 0).toFixed(1) + " drop/s"; Layout.preferredWidth: Theme.s(90); color: (s.dropsPerSec || 0) > 0 ? Theme.danger : Theme.text }
+        Label { text: "backlog " + ((s.backlog || 0) / 1024).toFixed(1) + " KiB / " + (s.qlen || 0) + " pkt"; Layout.preferredWidth: Theme.s(170) }
         Label { text: "total drops " + (s.drops || 0) + " · overlimits " + (s.overlimits || 0); color: Theme.textDim }
     }
 
@@ -36,7 +36,7 @@ Item {
             Item { Layout.fillWidth: true }
             Label { text: "Window" }
             BoundCombo {
-                Layout.preferredWidth: 90
+                Layout.preferredWidth: Theme.s(90)
                 values: [60, 120, 300, 600, 1800]
                 labels: ["1 min", "2 min", "5 min", "10 min", "30 min"]
                 current: Stats.windowSeconds
@@ -52,7 +52,7 @@ Item {
         Rectangle {
             id: monitorEmpty
             Layout.fillWidth: true
-            Layout.preferredHeight: 190
+            Layout.preferredHeight: Theme.s(190)
             Layout.minimumHeight: 150
             visible: !Link.active && Stats.sampleCount === 0
             color: Theme.panel
@@ -70,7 +70,7 @@ Item {
 
         RowLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: 190
+            Layout.preferredHeight: Theme.s(190)
             visible: !monitorEmpty.visible
             Layout.minimumHeight: 150
             spacing: 6
@@ -114,7 +114,7 @@ Item {
                     readonly property var classes: Link.classes.filter(c => c.proto === "tcp" && c.ip && c.port > 0)
                     readonly property string currentKey: Sockets.peerIp + ":" + Sockets.peerPort
                     property bool other: false
-                    Layout.preferredWidth: 260
+                    Layout.preferredWidth: Theme.s(260)
                     enabled: !Sockets.running
                     property string disabledReason: "Stop monitoring to change the peer"
                     values: classes.map(c => c.ip + ":" + c.port).concat(["other"])
@@ -130,7 +130,7 @@ Item {
                 }
                 TextField {
                     visible: peerPick.current === "other"
-                    Layout.preferredWidth: 120
+                    Layout.preferredWidth: Theme.s(120)
                     text: Sockets.peerIp
                     placeholderText: "IPv4"
                     selectByMouse: true
@@ -141,7 +141,7 @@ Item {
                 Label { text: ":"; visible: peerPick.current === "other" }
                 TextField {
                     visible: peerPick.current === "other"
-                    Layout.preferredWidth: 60
+                    Layout.preferredWidth: Theme.s(60)
                     text: Sockets.peerPort
                     selectByMouse: true
                     enabled: !Sockets.running
@@ -179,7 +179,7 @@ Item {
                     Layout.fillWidth: true
                     spacing: 8
                     Rectangle {
-                        width: 10; height: 10; radius: 5
+                        width: Theme.s(10); height: Theme.s(10); radius: 5
                         color: modelData.statusKind === "healthy" || modelData.statusKind === "recovered" ? Theme.ok
                                : modelData.statusKind === "listening" || modelData.statusKind === "idle" ? Theme.textDim
                                : modelData.statusKind === "stuck" || modelData.statusKind === "halfopen" ? Theme.danger
@@ -188,7 +188,7 @@ Item {
                     Label {
                         Layout.fillWidth: true
                         elide: Text.ElideRight
-                        font.pixelSize: 14
+                        font.pixelSize: Theme.fontBase + 1
                         font.bold: modelData.statusKind !== "healthy"
                         text: modelData.status
                         color: modelData.statusKind === "stuck" || modelData.statusKind === "halfopen" ? "#ff8a80" : Theme.text
@@ -234,7 +234,7 @@ Item {
                             Label {
                                 required property var modelData
                                 text: modelData[0]
-                                Layout.preferredWidth: modelData[1]
+                                Layout.preferredWidth: Theme.s(modelData[1])
                                 color: Theme.textDim
                             }
                         }
@@ -249,20 +249,20 @@ Item {
                         delegate: RowLayout {
                             required property var modelData
                             spacing: 4
-                            Label { text: modelData.local + " → " + modelData.peer; Layout.preferredWidth: 230; elide: Text.ElideMiddle;
+                            Label { text: modelData.local + " → " + modelData.peer; Layout.preferredWidth: Theme.s(230); elide: Text.ElideMiddle;
                                     font.bold: modelData.key === Sockets.tracked }
                             Label {
-                                text: modelData.state; Layout.preferredWidth: 80
+                                text: modelData.state; Layout.preferredWidth: Theme.s(80)
                                 color: modelData.state === "ESTAB" ? Theme.ok : Theme.warn
                             }
-                            Label { text: modelData.recvQ; Layout.preferredWidth: 56 }
-                            Label { text: modelData.sendQ; Layout.preferredWidth: 56; color: modelData.sendQ > 0 ? Theme.warn : Theme.text }
-                            Label { text: modelData.rtoMs >= 0 ? modelData.rtoMs : "-"; Layout.preferredWidth: 60; color: modelData.rtoMs > 1000 ? Theme.danger : Theme.text }
-                            Label { text: modelData.rttMs >= 0 ? modelData.rttMs.toFixed(1) : "-"; Layout.preferredWidth: 60 }
-                            Label { text: modelData.retransTotal >= 0 ? modelData.retransCur + "/" + modelData.retransTotal : "-"; Layout.preferredWidth: 64 }
-                            Label { text: modelData.backoff; Layout.preferredWidth: 56; color: modelData.backoff > 0 ? Theme.danger : Theme.text }
+                            Label { text: modelData.recvQ; Layout.preferredWidth: Theme.s(56) }
+                            Label { text: modelData.sendQ; Layout.preferredWidth: Theme.s(56); color: modelData.sendQ > 0 ? Theme.warn : Theme.text }
+                            Label { text: modelData.rtoMs >= 0 ? modelData.rtoMs : "-"; Layout.preferredWidth: Theme.s(60); color: modelData.rtoMs > 1000 ? Theme.danger : Theme.text }
+                            Label { text: modelData.rttMs >= 0 ? modelData.rttMs.toFixed(1) : "-"; Layout.preferredWidth: Theme.s(60) }
+                            Label { text: modelData.retransTotal >= 0 ? modelData.retransCur + "/" + modelData.retransTotal : "-"; Layout.preferredWidth: Theme.s(64) }
+                            Label { text: modelData.backoff; Layout.preferredWidth: Theme.s(56); color: modelData.backoff > 0 ? Theme.danger : Theme.text }
                             Label {
-                                Layout.preferredWidth: 140
+                                Layout.preferredWidth: Theme.s(140)
                                 text: modelData.timer ? modelData.timer + " " + (modelData.timerMs / 1000).toFixed(1) + " s"
                                                         + (modelData.timerRetrans > 0 ? " (" + modelData.timerRetrans + ")" : "") : "-"
                                 color: modelData.timer === "on" ? Theme.warn : modelData.timer === "persist" ? Theme.danger : Theme.text

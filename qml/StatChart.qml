@@ -16,7 +16,7 @@ ChartView {
     backgroundColor: Theme.panel
     plotAreaColor: Theme.bg
     antialiasing: true
-    legend.font.pixelSize: 10
+    legend.font.pixelSize: Theme.fontSmall
     legend.labelColor: Theme.textDim
     titleColor: Theme.text
     titleFont.pixelSize: 12

@@ -45,8 +45,10 @@ Item {
         spacing: 8
 
         ColumnLayout {
-            Layout.preferredWidth: 560
-            Layout.maximumWidth: 560
+            readonly property int sideWidth: Math.max(Theme.s(440), Math.min(Math.round(root.width * 0.42), Theme.s(760)))
+            Layout.minimumWidth: sideWidth
+            Layout.preferredWidth: sideWidth
+            Layout.maximumWidth: sideWidth
             Layout.fillHeight: true
             spacing: 8
 
@@ -190,7 +192,7 @@ Item {
                         required property int index
                         Layout.fillWidth: true
                         TextField {
-                            Layout.preferredWidth: 140
+                            Layout.preferredWidth: Theme.s(140)
                             text: epRow.modelData.name
                             selectByMouse: true
                             onEditingFinished: if (text.trim() !== epRow.modelData.name && !Link.renameEndpoint(epRow.modelData.name, text))
@@ -198,7 +200,7 @@ Item {
                         }
                         TextField {
                             id: epIp
-                            Layout.preferredWidth: 130
+                            Layout.preferredWidth: Theme.s(130)
                             readonly property bool typedValid: text === ""
                                 || /^((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])$/.test(text)
                             text: epRow.modelData.ip
@@ -254,10 +256,10 @@ Item {
                     ScrollBar.vertical: ScrollBar {}
                     header: RowLayout {
                         width: ifList.width
-                        Label { text: "Name"; Layout.preferredWidth: 80; color: Theme.textDim }
-                        Label { text: "Cable"; Layout.preferredWidth: 78; color: Theme.textDim }
-                        Label { text: "Speed"; Layout.preferredWidth: 62; color: Theme.textDim }
-                        Label { text: "Rx / Tx"; Layout.preferredWidth: 130; color: Theme.textDim }
+                        Label { text: "Name"; Layout.preferredWidth: Theme.s(80); color: Theme.textDim }
+                        Label { text: "Cable"; Layout.preferredWidth: Theme.s(78); color: Theme.textDim }
+                        Label { text: "Speed"; Layout.preferredWidth: Theme.s(62); color: Theme.textDim }
+                        Label { text: "Rx / Tx"; Layout.preferredWidth: Theme.s(130); color: Theme.textDim }
                         Label { text: "Addresses / notes"; Layout.fillWidth: true; color: Theme.textDim }
                     }
                     delegate: RowLayout {
@@ -267,27 +269,27 @@ Item {
                         width: ifList.width
                         Label {
                             text: ifRow.modelData.name
-                            Layout.preferredWidth: 80
+                            Layout.preferredWidth: Theme.s(80)
                             elide: Text.ElideRight
                             font.bold: true
                             color: ifRow.modelData.name === Link.airIface ? Theme.down
                                    : ifRow.modelData.name === Link.groundIface ? Theme.up : Theme.text
                         }
                         Label {
-                            Layout.preferredWidth: 78
+                            Layout.preferredWidth: Theme.s(78)
                             text: ifRow.lv.carrier === 1 ? "● linked" : ifRow.lv.carrier === 0 ? "○ unplugged" : "– down"
                             color: ifRow.lv.carrier === 1 ? Theme.ok : ifRow.lv.carrier === 0 ? Theme.danger : Theme.textDim
                         }
                         Label {
-                            Layout.preferredWidth: 62
+                            Layout.preferredWidth: Theme.s(62)
                             text: ifRow.lv.speedMbps > 0 ? (ifRow.lv.speedMbps >= 1000 ? ifRow.lv.speedMbps / 1000 + " G" : ifRow.lv.speedMbps + " M") : "–"
                             color: Theme.textDim
                         }
                         Label {
-                            Layout.preferredWidth: 130
+                            Layout.preferredWidth: Theme.s(130)
                             text: Theme.rate(ifRow.lv.rxKbps || 0) + " / " + Theme.rate(ifRow.lv.txKbps || 0)
                             color: (ifRow.lv.rxKbps || 0) + (ifRow.lv.txKbps || 0) > 1 ? Theme.text : Theme.textDim
-                            font.pixelSize: 11
+                            font.pixelSize: Theme.fontSmall
                         }
                         Label {
                             Layout.fillWidth: true
@@ -383,7 +385,7 @@ Item {
             Label {
                 Layout.fillWidth: true
                 wrapMode: Text.WordWrap
-                font.pixelSize: 14
+                font.pixelSize: Theme.fontBase + 1
                 text: Sys.identifyWatched.length === 0
                       ? "No port has a link right now. Plug the cables in first, then try again."
                       : Sys.identifyState === "waiting"

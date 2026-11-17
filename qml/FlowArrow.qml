@@ -6,7 +6,7 @@ Canvas {
     property color color: Theme.ok
     property bool pointsRight: true
     property real thickness: 4
-    implicitHeight: 18
+    implicitHeight: Theme.s(18)
     onColorChanged: requestPaint()
     onPointsRightChanged: requestPaint()
     onWidthChanged: requestPaint()

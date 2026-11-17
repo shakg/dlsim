@@ -54,12 +54,12 @@ ScrollView {
                     visible: card.active
                     text: card.modified ? "modified" : root.applyOnClick ? "active" : "selected"
                     color: card.modified ? Theme.warn : Theme.accent
-                    font.pixelSize: 11
+                    font.pixelSize: Theme.fontSmall
                 }
                 ToolButton {
                     visible: root.showMenus
                     text: "…"
-                    implicitHeight: 22
+                    implicitHeight: Theme.s(22)
                     onClicked: cardMenu.open()
                     Menu {
                         id: cardMenu
@@ -83,17 +83,17 @@ ScrollView {
                 text: card.p.description || ""
                 color: Theme.textDim
                 elide: Text.ElideRight
-                font.pixelSize: 11
+                font.pixelSize: Theme.fontSmall
             }
             Label {
                 text: "↑ " + Theme.profileShort(card.p.uplink || {})
                 color: Theme.up
-                font.pixelSize: 11
+                font.pixelSize: Theme.fontSmall
             }
             Label {
                 text: "↓ " + Theme.profileShort(card.p.downlink || {})
                 color: Theme.down
-                font.pixelSize: 11
+                font.pixelSize: Theme.fontSmall
             }
             RowLayout {
                 visible: card.modified
@@ -112,14 +112,14 @@ ScrollView {
     Column {
         width: root.availableWidth
         spacing: 6
-        Label { text: "Built-in"; color: Theme.textDim; font.pixelSize: 11; font.capitalization: Font.AllUppercase }
+        Label { text: "Built-in"; color: Theme.textDim; font.pixelSize: Theme.fontSmall; font.capitalization: Font.AllUppercase }
         Repeater { model: root.builtins; delegate: Card {} }
         Label {
             visible: root.users.length > 0
             topPadding: 6
             text: "Yours"
             color: Theme.textDim
-            font.pixelSize: 11
+            font.pixelSize: Theme.fontSmall
             font.capitalization: Font.AllUppercase
         }
         Repeater { model: root.users; delegate: Card {} }

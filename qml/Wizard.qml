@@ -103,7 +103,7 @@ Popup {
         property string diagram
         signal chosen()
         Layout.fillWidth: true
-        Layout.preferredHeight: 190
+        Layout.preferredHeight: Theme.s(190)
         radius: 6
         color: selected ? "#1f3350" : hover.hovered ? "#323741" : Theme.panelAlt
         border.color: selected ? Theme.accent : Theme.border
@@ -114,7 +114,7 @@ Popup {
             anchors.fill: parent
             anchors.margins: 14
             spacing: 8
-            Label { text: card.title; font.bold: true; font.pixelSize: 15 }
+            Label { text: card.title; font.bold: true; font.pixelSize: Theme.fontBase + 2 }
             Label { text: card.diagram; font.family: Theme.mono; color: Theme.accent }
             Label { Layout.fillWidth: true; wrapMode: Text.WordWrap; color: Theme.textDim; text: card.body }
             Item { Layout.fillHeight: true }
@@ -127,9 +127,9 @@ Popup {
         property string value
         property string role
         signal changed(string v)
-        Label { text: pp.label; Layout.preferredWidth: 150 }
+        Label { text: pp.label; Layout.preferredWidth: Theme.s(150) }
         BoundCombo {
-            Layout.preferredWidth: 160
+            Layout.preferredWidth: Theme.s(160)
             values: wiz.ports
             current: pp.value
             displayText: currentIndex < 0 ? "(choose)" : currentText
@@ -173,7 +173,7 @@ Popup {
         // Steps
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 44
+            Layout.preferredHeight: Theme.s(44)
             color: Theme.panelAlt
             radius: 6
             RowLayout {
@@ -203,11 +203,11 @@ Popup {
             // 1. Welcome
             ColumnLayout {
                 spacing: 14
-                Label { text: "Welcome to DLSim"; font.pixelSize: 22; font.bold: true }
+                Label { text: "Welcome to DLSim"; font.pixelSize: Theme.fontBase + 9; font.bold: true }
                 Label {
                     Layout.fillWidth: true
                     wrapMode: Text.WordWrap
-                    font.pixelSize: 15
+                    font.pixelSize: Theme.fontBase + 2
                     text: "DLSim makes an Ethernet link behave like a radio datalink: delay, packet loss, bandwidth "
                           + "limits and outages, so you can see how your software copes with a bad radio."
                 }
@@ -230,7 +230,7 @@ Popup {
             // 2. Where is this PC?
             ColumnLayout {
                 spacing: 14
-                Label { text: "Where is this PC?"; font.pixelSize: 18; font.bold: true }
+                Label { text: "Where is this PC?"; font.pixelSize: Theme.fontBase + 5; font.bold: true }
                 RowLayout {
                     spacing: 14
                     Card {
@@ -257,7 +257,7 @@ Popup {
             // 3. Ports and names
             ColumnLayout {
                 spacing: 12
-                Label { text: "Which ports, and what are the two ends called?"; font.pixelSize: 18; font.bold: true }
+                Label { text: "Which ports, and what are the two ends called?"; font.pixelSize: Theme.fontBase + 5; font.bold: true }
                 Label {
                     Layout.fillWidth: true
                     wrapMode: Text.WordWrap
@@ -265,10 +265,10 @@ Popup {
                     text: "Not sure which port is which? Press Identify and pull the cable on that side for a moment."
                 }
                 RowLayout {
-                    Label { text: "Names"; Layout.preferredWidth: 150 }
-                    TextField { Layout.preferredWidth: 160; text: wiz.groundName; onEditingFinished: wiz.groundName = text.trim() || "Ground" }
+                    Label { text: "Names"; Layout.preferredWidth: Theme.s(150) }
+                    TextField { Layout.preferredWidth: Theme.s(160); text: wiz.groundName; onEditingFinished: wiz.groundName = text.trim() || "Ground" }
                     Label { text: "⇄"; color: Theme.textDim }
-                    TextField { Layout.preferredWidth: 160; text: wiz.vehicleName; onEditingFinished: wiz.vehicleName = text.trim() || "Vehicle" }
+                    TextField { Layout.preferredWidth: Theme.s(160); text: wiz.vehicleName; onEditingFinished: wiz.vehicleName = text.trim() || "Vehicle" }
                 }
                 PortPick {
                     visible: wiz.mode === "bridge"
@@ -307,11 +307,11 @@ Popup {
             // 4. Traffic
             ColumnLayout {
                 spacing: 10
-                Label { text: "Which traffic should DLSim treat specially?"; font.pixelSize: 18; font.bold: true }
+                Label { text: "Which traffic should DLSim treat specially?"; font.pixelSize: Theme.fontBase + 5; font.bold: true }
                 RowLayout {
                     Label { text: wiz.vehicleName + " IP address" }
                     TextField {
-                        Layout.preferredWidth: 160
+                        Layout.preferredWidth: Theme.s(160)
                         text: wiz.vehicleIp
                         placeholderText: "e.g. the radio's address"
                         validator: RegularExpressionValidator { regularExpression: /[0-9.]{0,15}/ }
@@ -348,7 +348,7 @@ Popup {
             // 5. Starting condition
             ColumnLayout {
                 spacing: 10
-                Label { text: "How bad should the link be to start with?"; font.pixelSize: 18; font.bold: true }
+                Label { text: "How bad should the link be to start with?"; font.pixelSize: Theme.fontBase + 5; font.bold: true }
                 Label { color: Theme.textDim; text: "You can change it any time on the Link tab or from a scenario." }
                 PresetCards {
                     Layout.fillWidth: true
@@ -363,7 +363,7 @@ Popup {
             // 6. Review
             ColumnLayout {
                 spacing: 8
-                Label { text: "Ready to start"; font.pixelSize: 18; font.bold: true }
+                Label { text: "Ready to start"; font.pixelSize: Theme.fontBase + 5; font.bold: true }
                 GridLayout {
                     columns: 2
                     columnSpacing: 16

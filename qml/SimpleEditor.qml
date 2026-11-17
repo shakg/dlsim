@@ -51,7 +51,7 @@ ColumnLayout {
     function relayout() { root.spacing = 5; root.spacing = 4 } // forceLayout() needs Qt 6.5
     onSChanged: Qt.callLater(relayout)
 
-    Label { text: root.title; color: root.accent; font.bold: true; font.pixelSize: 14 }
+    Label { text: root.title; color: root.accent; font.bold: true; font.pixelSize: Theme.fontBase + 1 }
 
     ParamRow {
         Layout.fillWidth: true
@@ -67,7 +67,7 @@ ColumnLayout {
     }
 
     RowLayout {
-        Label { text: "Packet loss"; Layout.preferredWidth: 104 }
+        Label { text: "Packet loss"; Layout.preferredWidth: Theme.s(104) }
         ButtonGroup { id: lossGroup }
         Repeater {
             model: [["none", "None"], ["occasional", "Occasional"], ["bursty", "Bursty fades"]]
