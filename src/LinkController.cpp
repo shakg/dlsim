@@ -339,6 +339,18 @@ void LinkController::start()
     }
 }
 
+void LinkController::discardChanges()
+{
+    if (!m_applied)
+        return;
+    const bool cut = m_edit.cut;
+    m_edit = *m_applied;
+    m_edit.cut = cut; // the cut state is not an edit
+    m_activePreset = m_appliedPreset;
+    m_log->log("apply", "unapplied changes discarded");
+    edited(false);
+}
+
 void LinkController::apply()
 {
     if (!isActive()) {
@@ -381,6 +393,7 @@ void LinkController::sendApply(const QString &reason, bool force)
                               const bool wasActive = isActive();
                               m_applied = cfg;
                               m_appliedPlan = B::buildPlan(cfg);
+                              m_appliedPreset = m_activePreset;
                               if (!reason.isEmpty())
                                   m_log->log("apply", QStringLiteral("%1 [%2]: %3")
                                                           .arg(reason, res.value("level").toString(), describe(cfg)));

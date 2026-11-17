@@ -140,40 +140,13 @@ Item {
                 }
                 RowLayout {
                     Layout.topMargin: 4
-                    // Wrapper so the tooltip still shows while Start is disabled.
-                    Item {
-                        implicitWidth: startButton.implicitWidth
-                        implicitHeight: startButton.implicitHeight
-                        Button {
-                            id: startButton
-                            anchors.fill: parent
-                            text: Link.active ? "Restart" : "Start"
-                            highlighted: !Link.active
-                            enabled: Helper.running && !Link.busy && root.firstError === ""
-                            property string disabledReason: !Helper.running ? root.helperReason
-                                                            : Link.busy ? "Busy: waiting for the helper" : ""
-                            onClicked: root.startChecked()
-                        }
-                        HoverHandler { id: startHover }
-                        ToolTip.visible: startHover.hovered && (startButton.enabled || root.firstError !== "")
-                        ToolTip.text: root.firstError !== "" ? "Fix first: " + root.firstError
-                                                             : startButton.text + "  (Ctrl+Enter)"
-                        ToolTip.delay: 300
-                    }
-                    Button {
-                        text: "Stop"
-                        enabled: Helper.running && (Link.active || Link.bridgeUp) && !Link.busy
-                        property string disabledReason: !Helper.running ? root.helperReason
-                                                        : Link.busy ? "Busy: waiting for the helper" : "The link is not running"
-                        onClicked: Link.stop()
-                    }
-                    Button {
-                        text: "Reset all"
-                        enabled: Helper.running && !Link.busy
-                        property string disabledReason: !Helper.running ? root.helperReason : "Busy: waiting for the helper"
-                        onClicked: Link.reset()
-                        ToolTip.visible: hovered && enabled
-                        ToolTip.text: "Remove every qdisc, filter, IFB and bridge DLSim created"
+                    Label {
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        color: root.firstError ? Theme.danger : Theme.textDim
+                        text: root.firstError ? "Fix first: " + root.firstError
+                                              : Link.active ? "Running. Stop it (top right) to change mode or interfaces."
+                                              : "Ready. Start the link with Start at the top right."
                     }
                     Item { Layout.fillWidth: true }
                     Button { text: "Refresh"; onClicked: Sys.refresh() }

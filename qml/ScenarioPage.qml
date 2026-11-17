@@ -319,7 +319,7 @@ Item {
             Label {
                 visible: !Link.active
                 color: Theme.warn
-                text: "The link is not active: steps change the editors only. Start it on the Setup tab."
+                text: "The link is not active: steps change the editors only. Start it at the top right."
             }
         }
 

@@ -186,23 +186,33 @@ Environment variables:
 If the helper dies, a red banner shows the reason with a **Start helper**
 button. A new helper removes whatever the old one left behind.
 
+Errors stay on screen until dismissed and say what to do: e.g. a missing
+`netem` module shows the `apt`/`modprobe` command with a **Copy command**
+button, and the raw `tc` output is under **Details**. The bell in the header
+lists every error and warning of the session.
+
 Before using bridge mode, stop NetworkManager from managing the two NICs
 (`nmcli device set enp1s0 managed no`), or it may reconfigure them.
 
 ## Using it
 
-The window has a header, four tabs and a bottom panel. It fits 1366×768.
+The window has a header, four tabs, a status bar and a collapsible bottom
+panel. It fits 1366×768.
 
 **Header.** Helper status, mode and interfaces, link state and the active
-preset. On the right: **Timed outage** (cut for N seconds, then restore) and
-the big **CUT LINK / RESTORE** button (100% loss both ways, immediately).
-RESTORE clears every cut source (manual, timed, scenario, dropout).
+preset. On the right: **LIVE** (edits apply at once), the one **Start / Stop**
+button for the whole app, a **⋮** menu with **Reset all…** (removes every
+qdisc, filter, IFB and bridge DLSim created, after a confirmation), the
+notification bell, **Timed outage** (cut for N seconds, then restore) and the
+big **CUT LINK / RESTORE** button (100% loss both ways, immediately). RESTORE
+clears every cut source (manual, timed, scenario, dropout).
 
-**Setup.** Pick bridge or host mode and the interface(s). DLSim warns before
-you impair an interface that carries the default route or an SSH session, and
-before enslaving an interface with addresses to the bridge. **Start** creates
-the bridge (bridge mode) and applies the profiles; **Stop** removes them;
-**Reset all** removes every qdisc, filter, IFB and bridge DLSim created. The
+**Setup.** Pick bridge or host mode and the interface(s). Problems are shown
+next to the field that causes them, and Start stays disabled until they are
+fixed. DLSim warns before you impair an interface that carries the default
+route or an SSH session, before enslaving an interface with addresses to the
+bridge, and when NetworkManager manages a bridge port. **Start** creates the
+bridge (bridge mode) and applies the profiles; **Stop** removes them. The
 right side holds the **traffic classes**: protocol + IP + port, each using the
 link profile, a custom profile (own uplink/downlink netem), or excluded. A
 class matches packets *to or from* IP:port, so one class covers both
@@ -214,8 +224,9 @@ distribution (uniform, normal, pareto, paretonormal); loss (random with
 correlation, or Gilbert-Elliott `p`, `r`, `1-h`, `1-k`); rate (∞ = unlimited)
 and queue limit (auto = sized from delay × rate); duplicate, reorder (with
 correlation and gap) and corrupt. Presets load, save, delete, import and
-export here. With **Apply changes immediately** on, every edit is sent within
-150 ms; otherwise press **Apply**.
+export here. With **Apply edits immediately (live)** on, every edit is sent
+within 150 ms; otherwise an **Unapplied changes · Apply · Discard** bar
+appears under the header.
 
 **Scenario.** A timeline of steps: *Profile* (switch to a preset), *Fade to*
 (ramp from the current profiles to a preset over the step's duration) and
@@ -234,12 +245,21 @@ timer (`on` = retransmit, `keepalive`, `persist`) with its countdown. The chart
 plots RTO, backoff and total retransmits of one socket over time. Statistics
 and socket history export to CSV.
 
-**Bottom panel.** *Log*: a timestamped list of every applied change, outage
+**Bottom panel.** Closed by default; open it with **Log & commands** in the
+status bar (a red count shows new errors). Its state and height are
+remembered. *Log*: a timestamped list of every applied change, outage
 start/end, scenario step, socket state or backoff change, and helper message
 (exports to CSV). *Commands*: the exact `tc`/`ip` commands — **Pending** (the
-minimal diff the next apply will run, before you press Apply), **Full state**
+minimal diff the next apply will run, and whether that is a `tc qdisc change`
+or a rebuild), **Full state**
 (everything needed to build the current configuration from scratch) and
 **Executed** (what the helper ran, with exit codes and stderr).
+
+**Keyboard.** Space: CUT / RESTORE (not while typing; Esc leaves a text
+field). Ctrl+Enter: Start, or Apply. Ctrl+P: play/pause the scenario; Ctrl+.:
+stop it. Ctrl+1…4: tabs. F1: the list of shortcuts.
+
+Hover a disabled control to see why it is disabled.
 
 ## Reproducing the TCP telemetry stall
 

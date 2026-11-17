@@ -115,13 +115,13 @@ Item {
             }
 
             Section {
-                title: "Apply"
+                title: "State"
                 Layout.fillWidth: true
                 Label {
                     Layout.fillWidth: true
                     wrapMode: Text.WordWrap
                     text: !Helper.running ? "Helper not running"
-                          : !Link.active ? "Not active. Start it on the Setup tab."
+                          : !Link.active ? "Not active. Start it at the top right."
                           : Link.cut ? "Active, LINK CUT"
                           : Link.dirty ? "Active, unapplied changes" : "Active, in sync"
                     color: !Link.active ? Theme.textDim : Link.cut ? Theme.danger : Link.dirty ? Theme.warn : Theme.ok
@@ -134,35 +134,12 @@ Item {
                     elide: Text.ElideRight
                 }
                 CheckBox {
-                    text: "Apply changes immediately"
+                    text: "Apply edits immediately (live)"
                     checked: Link.autoApply
                     onToggled: {
                         Link.autoApply = checked
                         checked = Qt.binding(() => Link.autoApply)
                     }
-                }
-                RowLayout {
-                    Button {
-                        text: Link.active ? "Apply" : "Start"
-                        highlighted: Link.dirty || !Link.active
-                        enabled: Helper.running && !Link.busy && Link.validationErrors.length === 0
-                                 && (Link.dirty || !Link.active)
-                        property string disabledReason: !Helper.running ? "The privileged helper is not running (Start helper, at the top)"
-                                                        : Link.busy ? "Busy: waiting for the helper"
-                                                        : Link.validationErrors.length > 0 ? "Fix the errors listed below first"
-                                                        : "No changes to apply"
-                        Layout.fillWidth: true
-                        onClicked: Link.apply()
-                        ToolTip.visible: hovered && enabled
-                        ToolTip.text: (Link.active ? "Apply the edits" : "Start the link") + "  (Ctrl+Enter)"
-                    }
-                    BusyIndicator { running: Link.busy; Layout.preferredHeight: 24; Layout.preferredWidth: 24 }
-                }
-                Label {
-                    Layout.fillWidth: true
-                    color: Theme.textDim
-                    text: "Next apply: " + Link.previewLevel
-                          + (Link.previewLevel === "change" ? " (tc qdisc change only)" : "")
                 }
                 Label {
                     Layout.fillWidth: true

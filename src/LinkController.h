@@ -105,6 +105,8 @@ public:
     // Lifecycle
     Q_INVOKABLE void start();    // bridge: setup_bridge + apply; host: apply
     Q_INVOKABLE void apply();
+    // Throw away edits made since the last apply (active link only).
+    Q_INVOKABLE void discardChanges();
     Q_INVOKABLE void stop();     // remove impairment (and the bridge)
     Q_INVOKABLE void reset();    // remove everything DLSim created
 
@@ -151,6 +153,7 @@ private:
     bool m_bridgeUp = false;
     QString m_bridgeGround, m_bridgeAir;
     QString m_activePreset;
+    QString m_appliedPreset; // m_activePreset at the last successful apply
     bool m_autoApply = true;
 
     bool m_inFlight = false;

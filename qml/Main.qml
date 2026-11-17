@@ -285,6 +285,56 @@ ApplicationWindow {
             }
             Item { Layout.fillWidth: true }
 
+            // Edits go live at once with auto-apply; otherwise the bar below the header offers Apply.
+            Rectangle {
+                visible: Link.active && Link.autoApply
+                radius: 3
+                color: "#1b3d23"
+                border.color: Theme.ok
+                implicitWidth: liveLabel.implicitWidth + 14
+                implicitHeight: 22
+                Label { id: liveLabel; anchors.centerIn: parent; text: "● LIVE"; color: Theme.ok; font.bold: true }
+                HoverHandler { id: liveHover }
+                ToolTip.visible: liveHover.hovered
+                ToolTip.text: "Edits apply to the link at once. Turn off \"Apply edits immediately\" on the Link tab to batch them."
+            }
+            // The one Start/Stop for the whole app.
+            Button {
+                id: startStop
+                objectName: "startStopButton"
+                readonly property bool running: Link.active || Link.bridgeUp
+                Layout.preferredWidth: 96
+                text: running ? "Stop" : "Start"
+                highlighted: !running
+                enabled: running ? Helper.running && !Link.busy : win.startBlockedReason === ""
+                property string disabledReason: running ? (Link.busy ? "Busy: waiting for the helper"
+                                                                     : "The privileged helper is not running")
+                                                        : win.startBlockedReason
+                onClicked: running ? Link.stop() : setupPage.startChecked()
+                ToolTip.visible: hovered && enabled
+                ToolTip.text: running ? "Remove all impairment and the bridge" : "Start impairing the link  (Ctrl+Enter)"
+            }
+            BusyIndicator { running: Link.busy; visible: Link.busy; Layout.preferredHeight: 24; Layout.preferredWidth: 24 }
+            ToolButton {
+                id: moreButton
+                text: "⋮"
+                font.pixelSize: 18
+                onClicked: moreMenu.open()
+                ToolTip.visible: hovered
+                ToolTip.text: "More"
+                Menu {
+                    id: moreMenu
+                    y: moreButton.height
+                    MenuItem {
+                        text: "Reset all…"
+                        enabled: Helper.running && !Link.busy
+                        onTriggered: win.askConfirm("Reset all",
+                            "Remove every qdisc, filter, IFB and bridge DLSim created, on every interface? "
+                            + "The link stops being impaired.", "Reset all", () => Link.reset())
+                    }
+                }
+            }
+
             ToolButton {
                 id: bell
                 objectName: "notificationsButton"
@@ -586,6 +636,38 @@ ApplicationWindow {
                     ToolTip.visible: hovered
                     ToolTip.text: "Dismiss (kept in the notification list)"
                 }
+            }
+        }
+
+        // Auto-apply off: edits wait here until applied or discarded.
+        Rectangle {
+            objectName: "unappliedBar"
+            Layout.fillWidth: true
+            Layout.preferredHeight: visible ? 38 : 0
+            visible: Link.active && !Link.autoApply && Link.dirty
+            color: "#4a3b0f"
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 10
+                anchors.rightMargin: 10
+                Label { text: "Unapplied changes"; color: Theme.warn; font.bold: true }
+                Label {
+                    Layout.fillWidth: true
+                    elide: Text.ElideRight
+                    color: "#e8dcb5"
+                    text: Link.validationErrors.length > 0 ? "Fix first: " + Link.validationErrors[0]
+                                                           : "The link still runs the previous settings."
+                }
+                Button {
+                    text: "Apply"
+                    highlighted: true
+                    enabled: Link.validationErrors.length === 0 && !Link.busy && Helper.running
+                    property string disabledReason: win.startBlockedReason || "Busy: waiting for the helper"
+                    onClicked: Link.apply()
+                    ToolTip.visible: hovered && enabled
+                    ToolTip.text: "Apply  (Ctrl+Enter)"
+                }
+                Button { text: "Discard"; onClicked: Link.discardChanges() }
             }
         }
 
