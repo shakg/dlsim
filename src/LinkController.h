@@ -91,6 +91,8 @@ public:
     Q_INVOKABLE void setProfileField(const QString &dir, const QString &key, const QVariant &value);
     Q_INVOKABLE void setProfiles(const QVariantMap &uplink, const QVariantMap &downlink, const QString &presetName);
     Q_INVOKABLE void applyPreset(const QVariantMap &preset);
+    // Follow a preset rename: the active name changes, the modified mark stays.
+    Q_INVOKABLE void renameActivePreset(const QString &from, const QString &to);
 
     // netem queue limit the builder would pick for this profile when limitPkts is 0.
     Q_INVOKABLE int autoLimit(const QVariantMap &profile) const;

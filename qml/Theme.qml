@@ -17,6 +17,27 @@ QtObject {
     readonly property color warn: "#fbc02d"
     readonly property string mono: "monospace"
 
+    // ---- formatting shared by Home, preset cards, ...
+    function ms(v) { return (v >= 100 ? v.toFixed(0) : +v.toFixed(1)) + " ms" }
+    function rate(kbit) {
+        return kbit >= 1000 ? +(kbit / 1000).toFixed(kbit >= 10000 ? 0 : 1) + " Mbit/s" : Math.round(kbit) + " kbit/s"
+    }
+    function lossText(p, brief) {
+        if (p.lossModel === "gemodel")
+            return (p.geP || 0) > 0 ? "bursty loss" : (brief ? "0%" : "no loss")
+        return (p.lossPct || 0) > 0 ? +(p.lossPct).toFixed(2) + "%" + (brief ? "" : " loss") : (brief ? "0%" : "no loss")
+    }
+    // "80 ms ±10 · 1% loss · 2 Mbit/s"
+    function describeProfile(p) {
+        return [ms(p.delayMs || 0) + ((p.jitterMs || 0) > 0 ? " ±" + +(p.jitterMs).toFixed(1) : ""),
+                lossText(p, false),
+                (p.rateKbit || 0) > 0 ? rate(p.rateKbit) : "no rate limit"].join(" · ")
+    }
+    // "80 ms · 1% · 2 Mbit/s"
+    function profileShort(p) {
+        return [ms(p.delayMs || 0), lossText(p, true), (p.rateKbit || 0) > 0 ? rate(p.rateKbit) : "∞"].join(" · ")
+    }
+
     function categoryColor(c) {
         switch (c) {
         case "error": return danger

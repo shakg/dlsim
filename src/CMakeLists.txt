@@ -40,6 +40,7 @@ set(DLSIM_QML_FILES
     ../qml/HomePage.qml
     ../qml/FlowArrow.qml
     ../qml/StateBadge.qml
+    ../qml/PresetCards.qml
     ../qml/StatChart.qml
     ../qml/qmldir
 )

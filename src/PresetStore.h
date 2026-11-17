@@ -36,6 +36,8 @@ public:
     Q_INVOKABLE bool savePreset(const QString &name, const QString &description,
                                 const QVariantMap &uplink, const QVariantMap &downlink);
     Q_INVOKABLE bool deletePreset(const QString &name);
+    // Renames a user preset. Fails for built-ins and when the new name is taken.
+    Q_INVOKABLE bool renamePreset(const QString &from, const QString &to);
     Q_INVOKABLE QString importPreset(const QUrl &file);
     Q_INVOKABLE bool exportPreset(const QString &name, const QUrl &file);
 

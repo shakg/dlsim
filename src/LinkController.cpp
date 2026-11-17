@@ -206,6 +206,19 @@ void LinkController::applyProfilesLive(const Profile &up, const Profile &down, c
     sendApply(QString());
 }
 
+void LinkController::renameActivePreset(const QString &from, const QString &to)
+{
+    const bool modified = m_activePreset.endsWith('*');
+    const QString base = modified ? m_activePreset.chopped(1) : m_activePreset;
+    if (base != from)
+        return;
+    m_activePreset = to + (modified ? "*" : "");
+    if (m_appliedPreset == from)
+        m_appliedPreset = to;
+    Q_EMIT configChanged();
+    m_saveTimer.start();
+}
+
 int LinkController::autoLimit(const QVariantMap &profile) const
 {
     return int(B::autoLimit(Profile::fromJson(QJsonObject::fromVariantMap(profile))));

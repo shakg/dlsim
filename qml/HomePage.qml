@@ -11,21 +11,6 @@ Item {
     readonly property bool bridge: Link.mode === "bridge"
     readonly property bool clean: Link.validationErrors.length === 0
 
-    function ms(v) { return (v >= 100 ? v.toFixed(0) : +v.toFixed(1)) + " ms" }
-    function rate(kbit) {
-        return kbit >= 1000 ? +(kbit / 1000).toFixed(kbit >= 10000 ? 0 : 1) + " Mbit/s" : Math.round(kbit) + " kbit/s"
-    }
-    // "80 ms ±10 · 1% loss · 2 Mbit/s"
-    function describe(p) {
-        const parts = []
-        parts.push(root.ms(p.delayMs || 0) + ((p.jitterMs || 0) > 0 ? " ±" + +(p.jitterMs).toFixed(1) : ""))
-        if (p.lossModel === "gemodel")
-            parts.push((p.geP || 0) > 0 ? "bursty loss" : "no loss")
-        else
-            parts.push((p.lossPct || 0) > 0 ? +(p.lossPct).toFixed(2) + "% loss" : "no loss")
-        parts.push((p.rateKbit || 0) > 0 ? root.rate(p.rateKbit) : "no rate limit")
-        return parts.join(" · ")
-    }
     function lossy(p) { return p.lossModel === "gemodel" ? (p.geP || 0) > 0 : (p.lossPct || 0) > 0 }
     function arrowColor(p, base) {
         if (!Link.active) return Theme.border
@@ -33,7 +18,7 @@ Item {
         return root.lossy(p) || (p.delayMs || 0) > 0 || (p.rateKbit || 0) > 0 ? base : Theme.ok
     }
     function traffic(s) {
-        return Link.active ? root.rate(s.kbps || 0) + " · " + (s.dropsPerSec || 0).toFixed(1) + " drop/s" : ""
+        return Link.active ? Theme.rate(s.kbps || 0) + " · " + (s.dropsPerSec || 0).toFixed(1) + " drop/s" : ""
     }
 
     component Node: Rectangle {
@@ -76,7 +61,7 @@ Item {
         }
         Label {
             Layout.alignment: Qt.AlignHCenter
-            text: Link.cut && Link.active ? "100% loss (cut)" : root.describe(parent.profile)
+            text: Link.cut && Link.active ? "100% loss (cut)" : Theme.describeProfile(parent.profile)
             color: Link.cut && Link.active ? Theme.danger : Theme.text
             font.pixelSize: 14
         }

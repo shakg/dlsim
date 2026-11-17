@@ -199,6 +199,30 @@ bool PresetStore::deletePreset(const QString &name)
     return true;
 }
 
+bool PresetStore::renamePreset(const QString &from, const QString &to)
+{
+    setError(Kind::Preset, {});
+    const QString n = to.trimmed();
+    if (n.isEmpty())
+        return fail(Kind::Preset, "preset name is empty");
+    if (n == from)
+        return true;
+    if (isBuiltinPreset(from))
+        return fail(Kind::Preset, "built-in presets cannot be renamed");
+    if (isBuiltinPreset(n) || userPresetExists(n))
+        return fail(Kind::Preset, QStringLiteral("a preset named '%1' already exists").arg(n));
+    QVariantMap m = preset(from);
+    if (m.isEmpty())
+        return fail(Kind::Preset, QStringLiteral("unknown preset '%1'").arg(from));
+    m.remove("builtin");
+    m["name"] = n;
+    if (!writeJson(Kind::Preset, fileFor("presets", n), normalizePreset(QJsonObject::fromVariantMap(m))))
+        return false;
+    QFile::remove(fileFor("presets", from));
+    load();
+    return true;
+}
+
 QString PresetStore::importPreset(const QUrl &file)
 {
     setError(Kind::Preset, {});

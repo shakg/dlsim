@@ -17,6 +17,7 @@ private Q_SLOTS:
     void userPresetExists();
     void userScenarioExists();
     void missingPresets();
+    void renamePreset();
 
 private:
     static QVariantMap scenario(const QString &name)
@@ -109,6 +110,22 @@ void TestPresetStore::missingPresets()
     QCOMPARE(s.missingPresets({{"steps", steps}}), (QStringList{"Gone", "Also gone"}));
     QVERIFY(s.deletePreset("Mine"));
     QCOMPARE(s.missingPresets({{"steps", steps}}), (QStringList{"Mine", "Gone", "Also gone"}));
+}
+
+void TestPresetStore::renamePreset()
+{
+    PresetStore s;
+    QVERIFY(s.savePreset("Mine", "desc", {{"delayMs", 40}}, {}));
+    QVERIFY(s.savePreset("Other", "", {}, {}));
+    QVERIFY(!s.renamePreset("Mine", "Other"));            // taken
+    QVERIFY(!s.renamePreset("Mine", s.presetNames().first())); // built-in name
+    QVERIFY(!s.renamePreset(s.presetNames().first(), "X")); // built-in source
+    QVERIFY(s.renamePreset("Mine", "Renamed"));
+    QVERIFY(s.presetError().isEmpty());
+    QVERIFY(!s.presetNames().contains("Mine"));
+    QCOMPARE(s.preset("Renamed").value("description").toString(), QStringLiteral("desc"));
+    QCOMPARE(s.preset("Renamed").value("uplink").toMap().value("delayMs").toDouble(), 40.0);
+    QVERIFY(!s.userPresetExists("Mine"));
 }
 
 #include "tst_presetstore.moc"

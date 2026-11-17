@@ -230,8 +230,10 @@ excluded.
 distribution (uniform, normal, pareto, paretonormal); loss (random with
 correlation, or Gilbert-Elliott `p`, `r`, `1-h`, `1-k`); rate (∞ = unlimited)
 and queue limit (auto = sized from delay × rate); duplicate, reorder (with
-correlation and gap) and corrupt. Presets load, save, delete, import and
-export here. With **Apply edits immediately (live)** on, every edit is sent
+correlation and gap) and corrupt. Presets are cards on the left: name, description and delay · loss · rate per
+direction. Click a card to apply it. The active card is highlighted; after an
+edit it shows *modified* with **Save as new…** and **Revert**. Each card's …
+menu has Rename, Export and Delete (user presets). With **Apply edits immediately (live)** on, every edit is sent
 within 150 ms; otherwise an **Unapplied changes · Apply · Discard** bar
 appears under the header.
 

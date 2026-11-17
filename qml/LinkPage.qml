@@ -6,37 +6,15 @@ import DLSim
 
 Item {
     id: root
-    property string selectedPreset: Presets.presetNames.length > 0 ? Presets.presetNames[0] : ""
-    readonly property var presetData: { Presets.presetNames; return Presets.preset(selectedPreset) }
-    readonly property bool hasSelection: Presets.presetNames.indexOf(selectedPreset) >= 0
-
-    // The selected name can disappear (deleted here, or its file removed): fall back to the first one.
-    Connections {
-        target: Presets
-        function onPresetsChanged() {
-            if (!root.hasSelection)
-                root.selectedPreset = Presets.presetNames.length > 0 ? Presets.presetNames[0] : ""
-        }
-    }
-
-    function deleteSelected() {
-        const name = root.selectedPreset
+    function deletePreset(name) {
         root.ApplicationWindow.window.askConfirm("Delete preset", "Delete the preset '" + name + "'? This cannot be undone.",
-                                                 "Delete", () => {
-            const i = Presets.presetNames.indexOf(name)
-            if (!Presets.deletePreset(name))
-                return
-            // Select the item that took its place, or the new last one.
-            const names = Presets.presetNames
-            if (names.length > 0)
-                root.selectedPreset = names[Math.min(i, names.length - 1)]
-        })
+                                                 "Delete", () => Presets.deletePreset(name))
     }
 
     function savePreset(name, description) {
         const doSave = () => {
             if (Presets.savePreset(name, description, Link.uplink, Link.downlink))
-                root.selectedPreset = name.trim()
+                Link.applyPreset(Presets.preset(name.trim())) // the new card becomes the active one
         }
         if (Presets.userPresetExists(name))
             root.ApplicationWindow.window.askConfirm("Replace preset", "A preset named '" + name.trim()
@@ -51,61 +29,34 @@ Item {
         spacing: 8
 
         ColumnLayout {
-            Layout.preferredWidth: 270
-            Layout.maximumWidth: 270
+            Layout.preferredWidth: 300
+            Layout.maximumWidth: 300
             Layout.fillHeight: true
             spacing: 8
 
             Section {
-                title: "Preset"
+                title: "Conditions"
                 Layout.fillWidth: true
-                BoundCombo {
-                    id: presetCombo
-                    Layout.fillWidth: true
-                    values: Presets.presetNames
-                    current: root.selectedPreset
-                    onPicked: (v) => root.selectedPreset = v
-                }
-                Label {
-                    Layout.fillWidth: true
-                    wrapMode: Text.WordWrap
-                    color: Theme.textDim
-                    text: (root.presetData.description || "") + (root.presetData.builtin ? "  (built-in)" : "")
-                }
+                Layout.fillHeight: true
                 RowLayout {
-                    Button {
-                        text: "Load"
-                        highlighted: true
-                        Layout.fillWidth: true
-                        enabled: root.hasSelection
-                        property string disabledReason: "Select a preset"
-                        onClicked: Link.applyPreset(root.presetData)
-                        ToolTip.visible: hovered && enabled
-                        ToolTip.text: Link.active && Link.autoApply ? "Load and apply now" : "Load into the editors"
-                    }
-                    Button { text: "Save as…"; Layout.fillWidth: true; onClicked: saveDialog.open() }
-                }
-                RowLayout {
-                    Button {
-                        text: "Delete"
-                        enabled: root.hasSelection && !root.presetData.builtin
-                        property string disabledReason: root.hasSelection ? "Built-in presets can't be deleted" : "Select a preset"
-                        onClicked: root.deleteSelected()
-                    }
+                    Label { text: "Click to apply"; color: Theme.textDim; Layout.fillWidth: true }
                     Button {
                         text: "Import…"
                         onClicked: root.ApplicationWindow.window.askOpen("Import preset", ["Preset (*.json)"], (url) => {
-                            const name = Presets.importPreset(url)
-                            if (name) root.selectedPreset = name
+                            const n = Presets.importPreset(url)
+                            if (n) Link.applyPreset(Presets.preset(n))
                         })
                     }
-                    Button {
-                        text: "Export…"
-                        enabled: root.hasSelection
-                        property string disabledReason: "Select a preset"
-                        onClicked: root.ApplicationWindow.window.askSave("Export preset", ["Preset (*.json)"],
-                                       (url) => Presets.exportPreset(root.selectedPreset, url))
-                    }
+                }
+                PresetCards {
+                    objectName: "presetCards"
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    onSaveAsRequested: saveDialog.open()
+                    onRenameRequested: (n) => renameDialog.openFor(n)
+                    onDeleteRequested: (n) => root.deletePreset(n)
+                    onExportRequested: (n) => root.ApplicationWindow.window.askSave("Export preset", ["Preset (*.json)"],
+                                                                                    (url) => Presets.exportPreset(n, url))
                 }
                 ErrorNote {
                     Layout.fillWidth: true
@@ -149,7 +100,6 @@ Item {
                     text: "• " + Link.validationErrors.join("\n• ")
                 }
             }
-            Item { Layout.fillHeight: true }
         }
 
         ScrollView {
@@ -221,6 +171,30 @@ Item {
                 color: Theme.textDim
                 text: "Saved to " + Presets.configDir + "/presets/"
             }
+        }
+    }
+
+    Dialog {
+        id: renameDialog
+        property string from
+        function openFor(n) { from = n; renameField.text = n; open() }
+        title: "Rename preset"
+        modal: true
+        focus: true
+        parent: Overlay.overlay
+        anchors.centerIn: parent
+        width: 380
+        standardButtons: Dialog.Ok | Dialog.Cancel
+        onOpened: { renameField.forceActiveFocus(); renameField.selectAll() }
+        onAccepted: {
+            const to = renameField.text.trim()
+            if (Presets.renamePreset(from, to))
+                Link.renameActivePreset(from, to)
+        }
+        ColumnLayout {
+            anchors.fill: parent
+            Label { text: "New name" }
+            TextField { id: renameField; Layout.fillWidth: true; selectByMouse: true; onAccepted: renameDialog.accept() }
         }
     }
 }
