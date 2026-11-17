@@ -55,11 +55,19 @@ double num(const QJsonObject &o, const char *key, double def)
     return std::isfinite(d) ? d : def;
 }
 
-void checkRange(QStringList &errs, const QString &prefix, const char *name, double v, double lo, double hi)
+void add(QList<Issue> &out, const QString &path, const QString &textPrefix, const QString &message)
 {
-    if (!(v >= lo && v <= hi))
-        errs << QStringLiteral("%1%2 must be within %3..%4 (got %5)")
-                    .arg(prefix, QLatin1String(name)).arg(lo).arg(hi).arg(v);
+    out << Issue{path, message, textPrefix + message};
+}
+
+void checkRange(QList<Issue> &out, const QString &pathPrefix, const QString &textPrefix, const char *name, double v,
+                double lo, double hi)
+{
+    if (!(v >= lo && v <= hi)) {
+        const QString field = QLatin1String(name);
+        const QString msg = QStringLiteral("must be within %1..%2 (got %3)").arg(lo).arg(hi).arg(v);
+        out << Issue{pathPrefix + field, msg, textPrefix + field + ' ' + msg};
+    }
 }
 
 double lerp(double a, double b, double t) { return (1 - t) * a + t * b; } // exact at both ends
@@ -130,27 +138,40 @@ Profile Profile::fromJson(const QJsonObject &o)
     return p;
 }
 
-QStringList Profile::validate(const QString &prefix) const
+QStringList issueTexts(const QList<Issue> &issues)
 {
-    QStringList e;
-    checkRange(e, prefix, "delayMs", delayMs, 0, 60000);
-    checkRange(e, prefix, "jitterMs", jitterMs, 0, 60000);
-    checkRange(e, prefix, "delayCorrPct", delayCorrPct, 0, 100);
-    checkRange(e, prefix, "lossPct", lossPct, 0, 100);
-    checkRange(e, prefix, "lossCorrPct", lossCorrPct, 0, 100);
-    checkRange(e, prefix, "geP", geP, 0, 100);
-    checkRange(e, prefix, "geR", geR, 0, 100);
-    checkRange(e, prefix, "geBadLossPct", geBadLossPct, 0, 100);
-    checkRange(e, prefix, "geGoodLossPct", geGoodLossPct, 0, 100);
-    checkRange(e, prefix, "rateKbit", double(rateKbit), 0, 10'000'000);
-    checkRange(e, prefix, "limitPkts", double(limitPkts), 0, 1'000'000);
-    checkRange(e, prefix, "duplicatePct", duplicatePct, 0, 100);
-    checkRange(e, prefix, "reorderPct", reorderPct, 0, 100);
-    checkRange(e, prefix, "reorderCorrPct", reorderCorrPct, 0, 100);
-    checkRange(e, prefix, "reorderGap", double(reorderGap), 0, 1'000'000);
-    checkRange(e, prefix, "corruptPct", corruptPct, 0, 100);
+    QStringList out;
+    for (const auto &i : issues)
+        out << i.text;
+    return out;
+}
+
+QStringList Profile::validate(const QString &prefix) const { return issueTexts(issues(prefix, prefix)); }
+
+QList<Issue> Profile::issues(const QString &pathPrefix, const QString &textPrefix) const
+{
+    QList<Issue> e;
+    const QString &pp = pathPrefix;
+    const QString &tp = textPrefix;
+    checkRange(e, pp, tp, "delayMs", delayMs, 0, 60000);
+    checkRange(e, pp, tp, "jitterMs", jitterMs, 0, 60000);
+    checkRange(e, pp, tp, "delayCorrPct", delayCorrPct, 0, 100);
+    checkRange(e, pp, tp, "lossPct", lossPct, 0, 100);
+    checkRange(e, pp, tp, "lossCorrPct", lossCorrPct, 0, 100);
+    checkRange(e, pp, tp, "geP", geP, 0, 100);
+    checkRange(e, pp, tp, "geR", geR, 0, 100);
+    checkRange(e, pp, tp, "geBadLossPct", geBadLossPct, 0, 100);
+    checkRange(e, pp, tp, "geGoodLossPct", geGoodLossPct, 0, 100);
+    checkRange(e, pp, tp, "rateKbit", double(rateKbit), 0, 10'000'000);
+    checkRange(e, pp, tp, "limitPkts", double(limitPkts), 0, 1'000'000);
+    checkRange(e, pp, tp, "duplicatePct", duplicatePct, 0, 100);
+    checkRange(e, pp, tp, "reorderPct", reorderPct, 0, 100);
+    checkRange(e, pp, tp, "reorderCorrPct", reorderCorrPct, 0, 100);
+    checkRange(e, pp, tp, "reorderGap", double(reorderGap), 0, 1'000'000);
+    checkRange(e, pp, tp, "corruptPct", corruptPct, 0, 100);
     if (rateKbit > 0 && rateKbit < 8)
-        e << prefix + QStringLiteral("rateKbit must be 0 (unlimited) or at least 8");
+        e << Issue{pp + "rateKbit", QStringLiteral("must be 0 (unlimited) or at least 8 kbit"),
+                   tp + QStringLiteral("rateKbit must be 0 (unlimited) or at least 8")};
     return e;
 }
 
@@ -246,19 +267,22 @@ TrafficClass TrafficClass::withField(const QString &key, const QJsonValue &value
     return c;
 }
 
-QStringList TrafficClass::validate() const
+QStringList TrafficClass::validate() const { return issueTexts(issues(0)); }
+
+QList<Issue> TrafficClass::issues(int index) const
 {
-    QStringList e;
-    const QString p = QStringLiteral("class '%1': ").arg(name);
+    QList<Issue> e;
+    const QString pp = QStringLiteral("classes.%1.").arg(index);
+    const QString tp = QStringLiteral("class '%1': ").arg(name);
     if (name.size() > 64)
-        e << p + QStringLiteral("name too long");
+        add(e, pp + "name", tp, QStringLiteral("name too long"));
     if (!ip.isEmpty() && !isValidIp(ip))
-        e << p + QStringLiteral("invalid IPv4 address '%1'").arg(ip);
+        add(e, pp + "ip", tp, QStringLiteral("invalid IPv4 address '%1'").arg(ip));
     if (port != 0 && proto != Proto::Tcp && proto != Proto::Udp)
-        e << p + QStringLiteral("a port needs protocol tcp or udp");
+        add(e, pp + "port", tp, QStringLiteral("a port needs protocol tcp or udp"));
     if (mode == ClassMode::Custom) {
-        e << uplink.validate(p + "uplink.");
-        e << downlink.validate(p + "downlink.");
+        e << uplink.issues(pp + "uplink.", tp + "uplink.");
+        e << downlink.issues(pp + "downlink.", tp + "downlink.");
     }
     return e;
 }
@@ -299,41 +323,48 @@ LinkConfig LinkConfig::fromJson(const QJsonObject &o)
     return c;
 }
 
-QStringList LinkConfig::validate(const QStringList &knownIfaces) const
+QStringList LinkConfig::validate(const QStringList &knownIfaces) const { return issueTexts(issues(knownIfaces)); }
+
+QList<Issue> LinkConfig::issues(const QStringList &knownIfaces) const
 {
-    QStringList e;
-    auto checkIface = [&](const QString &role, const QString &name) {
-        if (!isValidIfaceName(name)) {
-            e << QStringLiteral("%1 interface name '%2' is invalid").arg(role, name);
+    QList<Issue> e;
+    auto checkIface = [&](const QString &path, const QString &role, const QString &name) {
+        auto bad = [&](const QString &msg) { e << Issue{path, msg, role + " interface " + msg}; };
+        if (name.isEmpty()) {
+            e << Issue{path, QStringLiteral("choose an interface"),
+                       QStringLiteral("%1 interface name '' is invalid: choose an interface").arg(role)};
             return;
         }
-        if (name == "lo" || name == kBridgeName || name == kIfbName)
-            e << QStringLiteral("%1 interface '%2' cannot be used").arg(role, name);
+        if (!isValidIfaceName(name))
+            bad(QStringLiteral("name '%1' is invalid").arg(name));
+        else if (name == "lo" || name == kBridgeName || name == kIfbName)
+            bad(QStringLiteral("'%1' cannot be used").arg(name));
         else if (!knownIfaces.isEmpty() && !knownIfaces.contains(name))
-            e << QStringLiteral("%1 interface '%2' does not exist").arg(role, name);
+            bad(QStringLiteral("'%1' does not exist").arg(name));
     };
     if (mode == Mode::Bridge) {
-        checkIface("ground", groundIface);
-        checkIface("air", airIface);
-        if (groundIface == airIface)
-            e << QStringLiteral("ground and air interfaces must differ");
+        checkIface("groundIface", "ground", groundIface);
+        checkIface("airIface", "air", airIface);
+        if (!groundIface.isEmpty() && groundIface == airIface)
+            e << Issue{"airIface", QStringLiteral("must differ from the ground NIC"),
+                       QStringLiteral("ground and air interfaces must differ")};
     } else {
-        checkIface("host", hostIface);
+        checkIface("hostIface", "host", hostIface);
     }
-    e << uplink.validate("uplink.");
-    e << downlink.validate("downlink.");
+    e << uplink.issues("uplink.", "uplink.");
+    e << downlink.issues("downlink.", "downlink.");
     if (classes.size() > kMaxClasses)
-        e << QStringLiteral("at most %1 traffic classes").arg(kMaxClasses);
+        add(e, "classes", {}, QStringLiteral("at most %1 traffic classes").arg(kMaxClasses));
     int custom = 0;
-    for (const auto &c : classes) {
-        e << c.validate();
-        if (c.enabled && c.mode == ClassMode::Custom)
+    for (int i = 0; i < classes.size(); ++i) {
+        e << classes[i].issues(i);
+        if (classes[i].enabled && classes[i].mode == ClassMode::Custom)
             ++custom;
     }
     if (custom > kMaxCustomClasses)
-        e << QStringLiteral("at most %1 classes with a custom profile").arg(kMaxCustomClasses);
+        add(e, "classes", {}, QStringLiteral("at most %1 classes with a custom profile").arg(kMaxCustomClasses));
     if (otherMode == ClassMode::Custom)
-        e << QStringLiteral("'Other' traffic can only use the link profile or be excluded");
+        add(e, "otherMode", {}, QStringLiteral("'Other' traffic can only use the link profile or be excluded"));
     return e;
 }
 

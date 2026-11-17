@@ -13,6 +13,7 @@ private Q_SLOTS:
     void classProtoWithoutPortsDropsPort();
     void classProtoWithPortsKeepsPort();
     void classWithFieldKeepsOtherFields();
+    void issuePaths();
 };
 
 void TestModel::classProtoWithoutPortsDropsPort_data()
@@ -65,6 +66,36 @@ void TestModel::classWithFieldKeepsOtherFields()
     QCOMPARE(n.name, QString("RTP video"));
     n.name = c.name;
     QVERIFY(n == c);
+}
+
+void TestModel::issuePaths()
+{
+    LinkConfig cfg;
+    cfg.mode = Mode::Bridge;
+    cfg.groundIface = "eth0";
+    cfg.airIface = "eth0";
+    cfg.uplink.delayMs = 70000;
+    TrafficClass ok;
+    ok.name = "ok";
+    TrafficClass bad;
+    bad.name = "bad";
+    bad.ip = "999.1..3";
+    bad.mode = ClassMode::Custom;
+    bad.downlink.lossPct = 150;
+    cfg.classes = {ok, bad};
+
+    QMap<QString, QString> byPath;
+    for (const Issue &i : cfg.issues({"eth0", "eth1"})) {
+        QVERIFY2(!i.message.isEmpty() && !i.text.isEmpty(), qPrintable(i.path));
+        byPath.insert(i.path, i.message);
+    }
+    QCOMPARE(byPath.keys(), (QStringList{"airIface", "classes.1.downlink.lossPct", "classes.1.ip", "uplink.delayMs"}));
+    QVERIFY(byPath["airIface"].contains("differ"));
+    QVERIFY(cfg.validate({"eth0", "eth1"}).join("; ").contains("class 'bad': downlink.lossPct must be within"));
+
+    cfg.airIface.clear();
+    QCOMPARE(cfg.issues({"eth0"}).first().path, QStringLiteral("airIface"));
+    QCOMPARE(cfg.issues({"eth0"}).first().message, QStringLiteral("choose an interface"));
 }
 
 QTEST_GUILESS_MAIN(TestModel)

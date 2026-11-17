@@ -13,6 +13,7 @@ RowLayout {
     property string suffix
     property bool logScale: false
     property string tip
+    property string error   // validation message; outlines the field in red
     signal edited(real v)
 
     spacing: 6
@@ -37,7 +38,7 @@ RowLayout {
         text: root.label
         Layout.preferredWidth: 104
         elide: Text.ElideRight
-        color: root.enabled ? Theme.text : Theme.textDim
+        color: root.error ? Theme.danger : root.enabled ? Theme.text : Theme.textDim
         HoverHandler { id: hover }
         ToolTip.visible: root.tip.length > 0 && hover.hovered
         ToolTip.text: root.tip
@@ -67,6 +68,10 @@ RowLayout {
             root.sync()
         }
         onActiveFocusChanged: if (!activeFocus) root.sync()
+        ErrorFrame { show: root.error !== "" }
+        HoverHandler { id: fieldHover }
+        ToolTip.visible: root.error !== "" && fieldHover.hovered
+        ToolTip.text: root.error
     }
     Label {
         text: root.suffix

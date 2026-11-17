@@ -16,6 +16,19 @@ Item {
         return out
     }
 
+    readonly property var errs: Link.fieldErrors
+    // First problem with the configuration, shown as the Start button's tooltip.
+    readonly property string firstError: Link.validationErrors.length > 0 ? Link.validationErrors[0] : ""
+
+    component FieldError: Label {
+        property string msg
+        Layout.fillWidth: true
+        visible: msg.length > 0
+        wrapMode: Text.WordWrap
+        color: Theme.danger
+        text: msg
+    }
+
     function startChecked() {
         if (warnings.length > 0 && !Link.active)
             confirm.open()
@@ -76,18 +89,24 @@ Item {
                         enabled: !Link.active
                         model: root.usableIfaces
                         currentIndex: root.usableIfaces.indexOf(Link.groundIface)
-                        displayText: currentIndex < 0 ? "(choose: faces the ground PC)" : currentText
+                        displayText: currentIndex < 0 ? (Link.groundIface || "(choose: faces the ground PC)") : currentText
                         onActivated: (i) => Link.groundIface = root.usableIfaces[i]
+                        ErrorFrame { show: !!root.errs.groundIface }
                     }
+                    Item { visible: !!root.errs.groundIface; implicitWidth: 1 }
+                    FieldError { msg: root.errs.groundIface || "" }
                     Label { text: "Air NIC" }
                     ComboBox {
                         Layout.fillWidth: true
                         enabled: !Link.active
                         model: root.usableIfaces
                         currentIndex: root.usableIfaces.indexOf(Link.airIface)
-                        displayText: currentIndex < 0 ? "(choose: faces the vehicle)" : currentText
+                        displayText: currentIndex < 0 ? (Link.airIface || "(choose: faces the vehicle)") : currentText
                         onActivated: (i) => Link.airIface = root.usableIfaces[i]
+                        ErrorFrame { show: !!root.errs.airIface }
                     }
+                    Item { visible: !!root.errs.airIface; implicitWidth: 1 }
+                    FieldError { msg: root.errs.airIface || "" }
                 }
                 RowLayout {
                     visible: Link.mode === "host"
@@ -97,10 +116,12 @@ Item {
                         enabled: !Link.active
                         model: root.usableIfaces
                         currentIndex: root.usableIfaces.indexOf(Link.hostIface)
-                        displayText: currentIndex < 0 ? "(choose)" : currentText
+                        displayText: currentIndex < 0 ? (Link.hostIface || "(choose)") : currentText
                         onActivated: (i) => Link.hostIface = root.usableIfaces[i]
+                        ErrorFrame { show: !!root.errs.hostIface }
                     }
                 }
+                FieldError { visible: Link.mode === "host" && msg.length > 0; msg: root.errs.hostIface || "" }
                 Repeater {
                     model: root.warnings
                     Label {
@@ -113,11 +134,22 @@ Item {
                 }
                 RowLayout {
                     Layout.topMargin: 4
-                    Button {
-                        text: Link.active ? "Restart" : "Start"
-                        highlighted: !Link.active
-                        enabled: Helper.running && !Link.busy
-                        onClicked: root.startChecked()
+                    // Wrapper so the tooltip still shows while Start is disabled.
+                    Item {
+                        implicitWidth: startButton.implicitWidth
+                        implicitHeight: startButton.implicitHeight
+                        Button {
+                            id: startButton
+                            anchors.fill: parent
+                            text: Link.active ? "Restart" : "Start"
+                            highlighted: !Link.active
+                            enabled: Helper.running && !Link.busy && root.firstError === ""
+                            onClicked: root.startChecked()
+                        }
+                        HoverHandler { id: startHover }
+                        ToolTip.visible: root.firstError !== "" && startHover.hovered
+                        ToolTip.text: "Fix first: " + root.firstError
+                        ToolTip.delay: 300
                     }
                     Button {
                         text: "Stop"

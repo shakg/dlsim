@@ -542,7 +542,12 @@ bool LinkController::isDirty() const
 void LinkController::updatePreview()
 {
     const LinkConfig desired = desiredConfig();
-    m_validation = desired.validate(m_sys->interfaceNames());
+    const QList<dlsim::Issue> issues = desired.issues(m_sys->interfaceNames());
+    m_validation = dlsim::issueTexts(issues);
+    m_fieldErrors.clear();
+    for (const auto &i : issues)
+        if (!m_fieldErrors.contains(i.path))
+            m_fieldErrors.insert(i.path, i.message);
     const Plan plan = B::buildPlan(desired);
 
     CommandList full;

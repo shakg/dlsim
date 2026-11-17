@@ -37,6 +37,17 @@ bool parse(const QString &, LossModel *);
 bool parse(const QString &, Proto *);
 bool parse(const QString &, ClassMode *);
 
+// One validation problem. path names the field, e.g. "airIface", "uplink.delayMs",
+// "classes.2.ip", "classes.2.uplink.lossPct" ("classes" / "otherMode" for whole-list
+// problems). message is short, for display next to that field; text is the
+// full sentence for logs and lists.
+struct Issue {
+    QString path;
+    QString message;
+    QString text;
+};
+QStringList issueTexts(const QList<Issue> &issues);
+
 // One netem configuration. Percentages are 0..100.
 struct Profile {
     double delayMs = 0;
@@ -67,6 +78,8 @@ struct Profile {
     QJsonObject toJson() const;
     static Profile fromJson(const QJsonObject &o);
     QStringList validate(const QString &prefix = {}) const;
+    // pathPrefix goes into Issue::path, textPrefix into Issue::text.
+    QList<Issue> issues(const QString &pathPrefix, const QString &textPrefix) const;
     bool hasLoss() const;
 };
 
@@ -92,6 +105,7 @@ struct TrafficClass {
     QJsonObject toJson() const;
     static TrafficClass fromJson(const QJsonObject &o);
     QStringList validate() const;
+    QList<Issue> issues(int index) const; // paths start with "classes.<index>."
     // Copy with one JSON field replaced. A protocol without ports (any, icmp)
     // drops the port, so the result never fails "a port needs tcp or udp".
     TrafficClass withField(const QString &key, const QJsonValue &value) const;
@@ -113,6 +127,7 @@ struct LinkConfig {
     static LinkConfig fromJson(const QJsonObject &o);
     // knownIfaces: names from `ip -j link`. Empty list skips the existence check.
     QStringList validate(const QStringList &knownIfaces = {}) const;
+    QList<Issue> issues(const QStringList &knownIfaces = {}) const;
 };
 
 bool isValidIfaceName(const QString &name);

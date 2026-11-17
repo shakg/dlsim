@@ -41,6 +41,8 @@ class LinkController : public QObject
 
     Q_PROPERTY(bool dirty READ isDirty NOTIFY previewChanged)
     Q_PROPERTY(QStringList validationErrors READ validationErrors NOTIFY previewChanged)
+    // Field path ("airIface", "classes.2.ip", "uplink.delayMs", ...) -> short message; first issue per field.
+    Q_PROPERTY(QVariantMap fieldErrors READ fieldErrors NOTIFY previewChanged)
     Q_PROPERTY(QString previewLevel READ previewLevel NOTIFY previewChanged)
     Q_PROPERTY(QString previewDiff READ previewDiff NOTIFY previewChanged)
     Q_PROPERTY(QString previewFull READ previewFull NOTIFY previewChanged)
@@ -76,6 +78,7 @@ public:
 
     bool isDirty() const;
     QStringList validationErrors() const { return m_validation; }
+    QVariantMap fieldErrors() const { return m_fieldErrors; }
     QString previewLevel() const { return m_previewLevel; }
     QString previewDiff() const { return m_previewDiff; }
     QString previewFull() const { return m_previewFull; }
@@ -164,5 +167,6 @@ private:
     double m_outageSeconds = 0;
 
     QStringList m_validation;
+    QVariantMap m_fieldErrors;
     QString m_previewLevel, m_previewDiff, m_previewFull, m_lastExecuted;
 };

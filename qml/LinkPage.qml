@@ -155,15 +155,12 @@ Item {
                     text: "Next apply: " + Link.previewLevel
                           + (Link.previewLevel === "change" ? " (tc qdisc change only)" : "")
                 }
-                Repeater {
-                    model: Link.validationErrors
-                    Label {
-                        required property string modelData
-                        Layout.fillWidth: true
-                        wrapMode: Text.WordWrap
-                        color: Theme.danger
-                        text: modelData
-                    }
+                Label {
+                    Layout.fillWidth: true
+                    visible: Link.validationErrors.length > 0
+                    wrapMode: Text.WordWrap
+                    color: Theme.danger
+                    text: "• " + Link.validationErrors.join("\n• ")
                 }
             }
             Item { Layout.fillHeight: true }
@@ -184,6 +181,7 @@ Item {
                     title: "Uplink  ground → air"
                     accent: Theme.up
                     profile: Link.uplink
+                    errorPrefix: "uplink."
                     onEdited: (k, v) => Link.setProfileField("uplink", k, v)
                 }
                 Rectangle { Layout.fillHeight: true; width: 1; color: Theme.border }
@@ -193,6 +191,7 @@ Item {
                     title: "Downlink  air → ground"
                     accent: Theme.down
                     profile: Link.downlink
+                    errorPrefix: "downlink."
                     onEdited: (k, v) => Link.setProfileField("downlink", k, v)
                 }
             }
