@@ -62,6 +62,6 @@ set(CPACK_DEBIAN_PACKAGE_DEPENDS
     "iproute2, pkexec | policykit-1, qt6-qpa-plugins, qml6-module-qtquick, qml6-module-qtquick-controls, \
 qml6-module-qtquick-layouts, qml6-module-qtquick-window, qml6-module-qtquick-templates, \
 qml6-module-qtqml-workerscript, qml6-module-qtquick-dialogs, qml6-module-qt-labs-folderlistmodel, \
-qml6-module-qtcharts")
+qml6-module-qtcharts, qml6-module-qt5compat-graphicaleffects")
 set(CPACK_DEBIAN_PACKAGE_RECOMMENDS "iperf3, jq, iputils-ping, ethtool")
 include(CPack)

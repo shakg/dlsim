@@ -13,9 +13,9 @@ Section {
 
     // "Telemetry · TCP to/from Vehicle:4555 · uses link profile"
     function sentence(c) {
-        const proto = c.proto === "any" ? "All protocols" : c.proto.toUpperCase()
+        const proto = c.proto === "any" ? "All protocols" : c.proto === "websocket" ? "WebSocket" : c.proto.toUpperCase()
         const where = c.endpoint ? c.endpoint + (c.ip ? "" : " (no IP yet)") : (c.ip || "any IP")
-        const port = (c.proto === "tcp" || c.proto === "udp") && c.port > 0 ? ":" + c.port : ""
+        const port = (c.proto === "tcp" || c.proto === "udp" || c.proto === "websocket") && c.port > 0 ? ":" + c.port : ""
         const mode = c.mode === "excluded" ? "never impaired" : c.mode === "custom" ? "own profile" : "uses link profile"
         return (c.name ? c.name + " · " : "") + proto + " to/from " + where + port + " · " + mode
     }
@@ -80,8 +80,8 @@ Section {
             height: col.implicitHeight + 8
             color: Theme.panelAlt
             radius: 3
-            border.color: rowError ? Theme.danger : modelData.mode === "excluded" ? Theme.border
-                          : modelData.mode === "custom" ? Theme.accent : Theme.ok
+            border.width: rowError || modelData.mode === "custom" ? 1 : 0
+            border.color: rowError ? Theme.danger : Theme.accent
 
             ColumnLayout {
                 id: col
@@ -89,7 +89,7 @@ Section {
                 spacing: 2
                 // Summary: the class as a sentence.
                 RowLayout {
-                    CheckBox {
+                    AppCheckBox {
                         checked: row.modelData.enabled
                         onToggled: {
                             Link.setClassField(row.index, "enabled", checked)
@@ -105,17 +105,27 @@ Section {
                         opacity: row.modelData.enabled ? 1 : 0.5
                         TapHandler { onTapped: root.editIndex = root.editIndex === row.index ? -1 : row.index }
                     }
-                    ToolButton {
+                    AppToolButton {
                         text: root.editIndex === row.index ? "Done" : "Edit"
                         onClicked: root.editIndex = root.editIndex === row.index ? -1 : row.index
                     }
-                    ToolButton { text: "▲"; property string disabledReason: "Already first"; enabled: row.index > 0; onClicked: Link.moveClass(row.index, -1) }
-                    ToolButton { text: "▼"; property string disabledReason: "Already last"; enabled: row.index < list.count - 1; onClicked: Link.moveClass(row.index, 1) }
-                    ToolButton { text: "✕"; onClicked: Link.removeClass(row.index) }
+                    AppToolButton {
+                        id: rowMenuButton
+                        text: "⋮"
+                        onClicked: rowMenu.open()
+                        Menu {
+                            id: rowMenu
+                            y: rowMenuButton.height
+                            MenuItem { text: "Move up"; enabled: row.index > 0; onTriggered: Link.moveClass(row.index, -1) }
+                            MenuItem { text: "Move down"; enabled: row.index < list.count - 1; onTriggered: Link.moveClass(row.index, 1) }
+                            MenuSeparator {}
+                            MenuItem { text: "Remove"; onTriggered: Link.removeClass(row.index) }
+                        }
+                    }
                 }
                 RowLayout {
                     visible: root.editIndex === row.index
-                    TextField {
+                    AppTextField {
                         Layout.fillWidth: true
                         text: row.modelData.name
                         placeholderText: "Name"
@@ -125,8 +135,8 @@ Section {
                     }
                     BoundCombo {
                         Layout.preferredWidth: Theme.s(70)
-                        values: ["any", "tcp", "udp", "icmp"]
-                        labels: ["any", "TCP", "UDP", "ICMP"]
+                        values: ["any", "tcp", "udp", "icmp", "websocket"]
+                        labels: ["any", "TCP", "UDP", "ICMP", "WebSocket"]
                         current: row.modelData.proto
                         onPicked: (v) => Link.setClassField(row.index, "proto", v)
                     }
@@ -139,7 +149,7 @@ Section {
                         onPicked: (v) => Link.setClassField(row.index, "endpoint", v)
                         ErrorFrame { show: row.modelData.endpoint && row.err("ip") !== "" }
                     }
-                    TextField {
+                    AppTextField {
                         id: ipField
                         visible: !row.modelData.endpoint
                         // Checked while typing; the backend check (row.err) covers stored values.
@@ -159,9 +169,10 @@ Section {
                     // Wrapper so the tooltip still shows while the field is disabled.
                     Item {
                         readonly property bool hasPorts: row.modelData.proto === "tcp" || row.modelData.proto === "udp"
+                                                         || row.modelData.proto === "websocket"
                         Layout.preferredWidth: Theme.s(58)
                         implicitHeight: portField.implicitHeight
-                        TextField {
+                        AppTextField {
                             id: portField
                             anchors.fill: parent
                             text: parent.hasPorts && row.modelData.port > 0 ? row.modelData.port : ""
@@ -174,7 +185,7 @@ Section {
                         }
                         HoverHandler { id: portHover }
                         ToolTip.visible: !hasPorts && portHover.hovered
-                        ToolTip.text: "A port needs protocol TCP or UDP"
+                        ToolTip.text: "A port needs TCP, UDP or WebSocket"
                         ToolTip.delay: 300
                     }
                 }
@@ -189,7 +200,7 @@ Section {
                         current: row.modelData.mode
                         onPicked: (v) => Link.setClassField(row.index, "mode", v)
                     }
-                    Button {
+                    AppButton {
                         text: "Edit profile…"
                         visible: row.modelData.mode === "custom"
                         onClicked: classDialog.openFor(row.index)
@@ -211,7 +222,7 @@ Section {
     }
 
     RowLayout {
-        Button {
+        AppButton {
             id: addButton
             objectName: "addTrafficButton"
             text: "Add traffic ▾"
@@ -249,7 +260,7 @@ Section {
         }
     }
 
-    Dialog {
+    AppDialog {
         id: classDialog
         property int classIndex: -1
         readonly property var cls: classIndex >= 0 && classIndex < Link.classes.length ? Link.classes[classIndex] : null
@@ -292,7 +303,7 @@ Section {
     }
 
     // Add a class from a traffic template: pick the endpoint, check the port.
-    Dialog {
+    AppDialog {
         id: addDialog
         objectName: "addTrafficDialog"
         property var tpl: ({})
@@ -321,13 +332,13 @@ Section {
             anchors.fill: parent
             columns: 2
             Label { text: "Name" }
-            TextField { id: nameField; Layout.fillWidth: true; selectByMouse: true; placeholderText: "e.g. Telemetry" }
+            AppTextField { id: nameField; Layout.fillWidth: true; selectByMouse: true; placeholderText: "e.g. Telemetry" }
             Label { text: "Protocol" }
             BoundCombo {
                 id: protoPick
                 Layout.fillWidth: true
-                values: ["any", "tcp", "udp", "icmp"]
-                labels: ["any", "TCP", "UDP", "ICMP"]
+                values: ["any", "tcp", "udp", "icmp", "websocket"]
+                labels: ["any", "TCP", "UDP", "ICMP", "WebSocket"]
                 onPicked: (v) => current = v
             }
             Label { text: "To/from" }
@@ -339,11 +350,11 @@ Section {
                 onPicked: (v) => current = v
             }
             Label { text: "Port" }
-            TextField {
+            AppTextField {
                 id: portField2
                 Layout.fillWidth: true
-                enabled: protoPick.current === "tcp" || protoPick.current === "udp"
-                property string disabledReason: "A port needs protocol TCP or UDP"
+                enabled: protoPick.current === "tcp" || protoPick.current === "udp" || protoPick.current === "websocket"
+                property string disabledReason: "A port needs TCP, UDP or WebSocket"
                 selectByMouse: true
                 placeholderText: "any port"
                 validator: IntValidator { bottom: 0; top: 65535 }
@@ -353,7 +364,9 @@ Section {
                 Layout.fillWidth: true
                 wrapMode: Text.WordWrap
                 color: Theme.textDim
-                text: "Endpoints (named devices like Vehicle) are set on the left, under Endpoints."
+                text: protoPick.current === "websocket"
+                      ? "WebSocket is matched by its TCP port; encrypted WSS and other TCP traffic on the same port cannot be distinguished."
+                      : "Endpoints (named devices like Vehicle) are set under Advanced setup."
             }
         }
     }

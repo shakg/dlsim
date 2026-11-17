@@ -71,7 +71,7 @@ ColumnLayout {
         ButtonGroup { id: lossGroup }
         Repeater {
             model: [["none", "None"], ["occasional", "Occasional"], ["bursty", "Bursty fades"]]
-            RadioButton {
+            AppRadioButton {
                 required property var modelData
                 text: modelData[1]
                 checked: root.s.loss === modelData[0]
@@ -109,7 +109,7 @@ ColumnLayout {
             value: root.s.rateKbit > 0 ? root.s.rateKbit : 1000000
             onEdited: (v) => root.set("rateKbit", Math.round(v))
         }
-        CheckBox {
+        AppCheckBox {
             text: "unlimited"
             checked: root.s.rateKbit === 0
             onToggled: {

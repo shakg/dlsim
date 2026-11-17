@@ -18,12 +18,12 @@ Rectangle {
                                    : "Running"
     readonly property color tone: kind === "off" ? Theme.textDim
                                   : kind === "cut" ? Theme.danger
-                                  : kind === "running" ? Theme.ok : "#ce93d8"
+                                   : kind === "running" ? Theme.ok : Theme.purple
     radius: height / 2
     color: Qt.rgba(tone.r, tone.g, tone.b, 0.18)
-    border.color: tone
-    implicitWidth: label.implicitWidth + 24
-    implicitHeight: label.implicitHeight + 8
+    border.color: Qt.rgba(tone.r, tone.g, tone.b, 0.55)
+    implicitWidth: label.implicitWidth + Theme.s(24)
+    implicitHeight: label.implicitHeight + Theme.s(10)
     Label {
         id: label
         anchors.centerIn: parent

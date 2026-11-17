@@ -3,21 +3,35 @@ import QtQuick
 import DLSim
 
 QtObject {
-    readonly property color bg: "#1e2126"
-    readonly property color panel: "#252930"
-    readonly property color panelAlt: "#2c3038"
-    readonly property color border: "#3a3f47"
-    readonly property color text: "#e6e8eb"
-    readonly property color textDim: "#9aa1ab"
-    readonly property color accent: "#3d8bfd"
-    readonly property color up: "#4fc3f7"      // uplink, ground -> air
-    readonly property color down: "#ffb74d"    // downlink, air -> ground
-    // Text and outlines; 4.8:1 on panels (WCAG AA). Fills with white text use dangerFill.
-    readonly property color danger: "#ff6b66"
-    readonly property color dangerFill: "#e53935"
-    readonly property color dangerDark: "#8e1c1a"
-    readonly property color ok: "#43a047"
-    readonly property color warn: "#fbc02d"
+    // IDE-like neutral surfaces: blue communicates selection and focus, green
+    // means execute/success, and red is reserved for destructive link state.
+    readonly property color bg: "#17171a"
+    readonly property color panel: "#1d1d21"
+    readonly property color panelAlt: "#24242a"
+    readonly property color elevated: "#2a2a31"
+    readonly property color control: "#292930"
+    readonly property color hover: "#303039"
+    readonly property color pressed: "#373741"
+    readonly property color selected: "#252d3b"
+    readonly property color border: "#35353d"
+    readonly property color borderStrong: "#4a4a55"
+    readonly property color text: "#ececf0"
+    readonly property color textDim: "#aaa9b2"
+    readonly property color textFaint: "#7c7b86"
+    readonly property color accent: "#5f95e8"
+    readonly property color accentBright: "#78a9f2"
+    readonly property color up: "#69a7e7"      // uplink, ground -> air
+    readonly property color down: "#d3a15d"    // downlink, air -> ground
+    readonly property color purple: "#aa91d5"
+    readonly property color danger: "#ef747e"
+    readonly property color dangerFill: "#b9505a"
+    readonly property color dangerDark: "#47272d"
+    readonly property color ok: "#61c38b"
+    readonly property color warn: "#dcae55"
+    readonly property int radiusSmall: s(4)
+    readonly property int radius: s(6)
+    readonly property int radiusLarge: s(8)
+    readonly property int controlHeight: s(34)
     readonly property string mono: "monospace"
 
     // Font sizes: fontBase follows the system font (min 13 px) times the zoom (Ctrl+= / Ctrl+-); set by Main.

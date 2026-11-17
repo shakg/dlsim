@@ -60,29 +60,29 @@ void installSignalHandlers(QApplication &app)
 QPalette darkPalette()
 {
     QPalette p;
-    const QColor window(0x1e, 0x21, 0x26), base(0x16, 0x18, 0x1c), text(0xe6, 0xe8, 0xeb);
-    const QColor button(0x2a, 0x2e, 0x35), highlight(0x3d, 0x8b, 0xfd), mid(0x3a, 0x3f, 0x47);
+    const QColor window(0x0b, 0x0c, 0x13), base(0x0b, 0x0c, 0x13), text(0xdf, 0xe2, 0xee);
+    const QColor button(0x15, 0x17, 0x22), highlight(0x6e, 0xab, 0x93), mid(0x28, 0x2b, 0x3d);
     p.setColor(QPalette::Window, window);
     p.setColor(QPalette::WindowText, text);
     p.setColor(QPalette::Base, base);
-    p.setColor(QPalette::AlternateBase, window);
+    p.setColor(QPalette::AlternateBase, QColor(0x16, 0x18, 0x22));
     p.setColor(QPalette::ToolTipBase, button);
     p.setColor(QPalette::ToolTipText, text);
-    p.setColor(QPalette::PlaceholderText, QColor(0x80, 0x86, 0x90));
+    p.setColor(QPalette::PlaceholderText, QColor(0x67, 0x6e, 0x8c));
     p.setColor(QPalette::Text, text);
     p.setColor(QPalette::Button, button);
     p.setColor(QPalette::ButtonText, text);
     p.setColor(QPalette::BrightText, Qt::white);
     p.setColor(QPalette::Highlight, highlight);
     p.setColor(QPalette::HighlightedText, Qt::white);
-    p.setColor(QPalette::Light, QColor(0x45, 0x4b, 0x55));
+    p.setColor(QPalette::Light, QColor(0x3a, 0x3f, 0x56));
     p.setColor(QPalette::Midlight, mid);
     p.setColor(QPalette::Mid, mid);
-    p.setColor(QPalette::Dark, QColor(0x12, 0x14, 0x17));
+    p.setColor(QPalette::Dark, QColor(0x0b, 0x0c, 0x13));
     p.setColor(QPalette::Shadow, Qt::black);
     p.setColor(QPalette::Link, highlight);
     for (auto role : {QPalette::WindowText, QPalette::Text, QPalette::ButtonText})
-        p.setColor(QPalette::Disabled, role, QColor(0x6c, 0x72, 0x7c));
+        p.setColor(QPalette::Disabled, role, QColor(0x67, 0x6e, 0x8c));
     return p;
 }
 
@@ -196,6 +196,16 @@ int main(int argc, char *argv[])
     if (!shotDir.isEmpty()) {
         auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().first());
         QObject *pages = window->findChild<QObject *>("pages");
+        if (qEnvironmentVariableIntValue("DLSIM_SCREENSHOT_DIALOG") == 1) {
+            QTimer::singleShot(500, window, [=] {
+                QMetaObject::invokeMethod(window->findChild<QObject *>("shortcutsDialog"), "open");
+                QTimer::singleShot(700, window, [=] {
+                    window->grabWindow().save(QDir(shotDir).filePath(QStringLiteral("dialog.png")));
+                    QCoreApplication::quit();
+                });
+            });
+            return app.exec();
+        }
         auto shoot = std::make_shared<std::function<void(int)>>();
         *shoot = [=](int page) {
             if (page >= 5) {
@@ -211,9 +221,9 @@ int main(int argc, char *argv[])
         QTimer::singleShot(2500, window, [=] { (*shoot)(0); });
     }
 
-    // First run: the setup wizard explains the password prompt and starts the
-    // helper from its Welcome step. Later runs start it right away.
-    if (qEnvironmentVariableIntValue("DLSIM_NO_HELPER") != 1 && link.hasSavedConfig())
+    // Setup lives in the main app, so first launch follows the same helper path
+    // as every later launch instead of gating it behind onboarding.
+    if (qEnvironmentVariableIntValue("DLSIM_NO_HELPER") != 1)
         helper.start();
     return app.exec();
 }

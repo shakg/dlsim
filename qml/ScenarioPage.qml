@@ -95,7 +95,7 @@ Item {
 
     RowLayout {
         anchors.fill: parent
-        anchors.margins: 8
+        anchors.margins: Theme.s(16)
         spacing: 8
 
         Section {
@@ -110,7 +110,7 @@ Item {
                     current: root.selectedScenario
                     onPicked: (v) => root.selectedScenario = v
                 }
-                Button {
+                AppButton {
                     text: "Load"
                     enabled: root.hasSelection
                     property string disabledReason: "Select a scenario"
@@ -119,56 +119,60 @@ Item {
                         root.unlessUnsaved(() => Scenario.load(Presets.scenario(name)))
                     }
                 }
-                Button {
+                AppButton {
                     text: "Save"
                     onClicked: root.saveCurrent()
                     ToolTip.visible: hovered && enabled
                     ToolTip.text: Presets.isBuiltinScenario(Scenario.name.trim())
                                   ? "Built-in scenarios can't be changed: save a copy" : "Save as '" + Scenario.name + "'"
                 }
-                Button { text: "Save as…"; onClicked: saveAsDialog.openWith(Scenario.name.trim()) }
-                Button {
-                    text: "Delete"
-                    enabled: root.hasSelection && !Presets.isBuiltinScenario(root.selectedScenario)
-                    property string disabledReason: root.hasSelection ? "Built-in scenarios can't be deleted" : "Select a scenario"
-                    onClicked: root.deleteSelected()
-                }
-                Button {
-                    text: "Import…"
-                    onClicked: root.unlessUnsaved(() => root.ApplicationWindow.window.askOpen(
-                        "Import scenario", ["Scenario (*.json)"], (url) => {
-                            const n = Presets.importScenario(url)
-                            if (!n)
-                                return
-                            root.selectedScenario = n
-                            Scenario.load(Presets.scenario(n))
-                            const missing = Presets.missingPresets(Presets.scenario(n))
-                            if (missing.length > 0)
-                                root.ApplicationWindow.window.showInfo("Missing presets",
-                                    "'" + n + "' uses presets that don't exist here:\n\n• "
-                                    + missing.map(m => m || "(none chosen)").join("\n• ")
-                                    + "\n\nImport or create them, or pick other presets for the red steps.")
-                        }))
-                }
-                Button {
-                    text: "Export…"
-                    enabled: root.hasSelection
-                    property string disabledReason: "Select a scenario"
-                    onClicked: root.ApplicationWindow.window.askSave("Export scenario", ["Scenario (*.json)"],
-                                   (url) => Presets.exportScenario(root.selectedScenario, url))
-                }
-                Button {
-                    objectName: "reportsButton"
-                    text: "Reports…"
-                    onClicked: reportsDialog.open()
-                    ToolTip.visible: hovered && enabled
-                    ToolTip.text: "Reports of earlier runs"
-                }
-                Button {
+                AppButton {
                     text: "New…"
                     onClicked: root.unlessUnsaved(() => templateDialog.open())
                     ToolTip.visible: hovered && enabled
                     ToolTip.text: "New scenario from a goal or a blank one"
+                }
+                Item { Layout.fillWidth: true }
+                AppToolButton {
+                    id: scenarioMenuButton
+                    text: "⋮"
+                    onClicked: scenarioMenu.open()
+                    Menu {
+                        id: scenarioMenu
+                        y: scenarioMenuButton.height
+                        MenuItem { text: "Save as…"; onTriggered: saveAsDialog.openWith(Scenario.name.trim()) }
+                        MenuItem {
+                            text: "Import…"
+                            onTriggered: root.unlessUnsaved(() => root.ApplicationWindow.window.askOpen(
+                                "Import scenario", ["Scenario (*.json)"], (url) => {
+                                    const n = Presets.importScenario(url)
+                                    if (!n)
+                                        return
+                                    root.selectedScenario = n
+                                    Scenario.load(Presets.scenario(n))
+                                    const missing = Presets.missingPresets(Presets.scenario(n))
+                                    if (missing.length > 0)
+                                        root.ApplicationWindow.window.showInfo("Missing presets",
+                                            "'" + n + "' uses presets that don't exist here:\n\n• "
+                                            + missing.map(m => m || "(none chosen)").join("\n• ")
+                                            + "\n\nImport or create them, or pick other presets for the red steps.")
+                                }))
+                        }
+                        MenuItem {
+                            text: "Export…"
+                            enabled: root.hasSelection
+                            onTriggered: root.ApplicationWindow.window.askSave("Export scenario", ["Scenario (*.json)"],
+                                           (url) => Presets.exportScenario(root.selectedScenario, url))
+                        }
+                        MenuSeparator {}
+                        MenuItem { objectName: "reportsButton"; text: "Run reports…"; onTriggered: reportsDialog.open() }
+                        MenuSeparator {}
+                        MenuItem {
+                            text: "Delete scenario…"
+                            enabled: root.hasSelection && !Presets.isBuiltinScenario(root.selectedScenario)
+                            onTriggered: root.deleteSelected()
+                        }
+                    }
                 }
             }
             ErrorNote {
@@ -177,14 +181,7 @@ Item {
                 onDismissed: Presets.clearScenarioError()
             }
             RowLayout {
-                Label { text: "Name" }
-                TextField {
-                    Layout.preferredWidth: Theme.s(220)
-                    text: Scenario.name
-                    selectByMouse: true
-                    onEditingFinished: Scenario.name = text
-                }
-                CheckBox {
+                AppCheckBox {
                     text: "Loop"
                     checked: Scenario.loop
                     onToggled: { Scenario.loop = checked; checked = Qt.binding(() => Scenario.loop) }
@@ -235,12 +232,11 @@ Item {
                     width: steps.width - 10
                     height: missingPreset ? Theme.s(58) : Theme.s(36)
                     radius: 3
-                    color: current ? "#21406b" : missingPreset ? "#3a2226"
-                           : index === timeline.selected ? "#2c3a4d" : Theme.panelAlt
-                    border.color: modelData.type === "outage" || missingPreset ? Theme.danger
-                                  : modelData.type === "dropouts" ? Theme.warn
-                                  : modelData.type === "fade" ? "#ce93d8" : Theme.border
-                    border.width: missingPreset ? 2 : 1
+                    color: current ? "#294438" : missingPreset ? "#432d31"
+                           : index === timeline.selected ? Theme.elevated : Theme.panelAlt
+                    border.color: missingPreset ? Theme.danger
+                                  : current || index === timeline.selected ? Theme.accent : Theme.border
+                    border.width: missingPreset ? 2 : current || index === timeline.selected ? 1 : 0
 
                     Rectangle {
                         visible: stepRow.current
@@ -294,7 +290,7 @@ Item {
                             Layout.fillWidth: true
                             spacing: 4
                             Label { text: "outages about every"; color: Theme.textDim }
-                            TextField {
+                            AppTextField {
                                 Layout.preferredWidth: Theme.s(52)
                                 horizontalAlignment: Text.AlignRight
                                 text: stepRow.modelData.meanIntervalS === undefined ? 30 : stepRow.modelData.meanIntervalS
@@ -303,7 +299,7 @@ Item {
                                 onEditingFinished: Scenario.setStepField(stepRow.index, "meanIntervalS", Math.max(0.1, Number(text)))
                             }
                             Label { text: "s, lasting about"; color: Theme.textDim }
-                            TextField {
+                            AppTextField {
                                 Layout.preferredWidth: Theme.s(52)
                                 horizontalAlignment: Text.AlignRight
                                 text: stepRow.modelData.meanDurationS === undefined ? 3 : stepRow.modelData.meanDurationS
@@ -314,7 +310,7 @@ Item {
                             Label { text: "s"; color: Theme.textDim }
                             Item { Layout.fillWidth: true }
                         }
-                        TextField {
+                        AppTextField {
                             Layout.preferredWidth: Theme.s(64)
                             horizontalAlignment: Text.AlignRight
                             text: stepRow.modelData.durationS
@@ -329,18 +325,28 @@ Item {
                             text: Scenario.stepElapsed.toFixed(1)
                             color: Theme.accent
                         }
-                        ToolButton { text: "▲"; property string disabledReason: "Already first"; enabled: stepRow.index > 0; onClicked: Scenario.moveStep(stepRow.index, -1) }
-                        ToolButton { text: "▼"; property string disabledReason: "Already last"; enabled: stepRow.index < steps.count - 1; onClicked: Scenario.moveStep(stepRow.index, 1) }
-                        ToolButton { text: "✕"; onClicked: Scenario.removeStep(stepRow.index) }
+                        AppToolButton {
+                            id: stepMenuButton
+                            text: "⋮"
+                            onClicked: stepMenu.open()
+                            Menu {
+                                id: stepMenu
+                                y: stepMenuButton.height
+                                MenuItem { text: "Move up"; enabled: stepRow.index > 0; onTriggered: Scenario.moveStep(stepRow.index, -1) }
+                                MenuItem { text: "Move down"; enabled: stepRow.index < steps.count - 1; onTriggered: Scenario.moveStep(stepRow.index, 1) }
+                                MenuSeparator {}
+                                MenuItem { text: "Remove step"; onTriggered: Scenario.removeStep(stepRow.index) }
+                            }
+                        }
                     }
                 }
             }
             RowLayout {
                 Label { text: "Add:"; color: Theme.textDim }
-                Button { text: "Hold condition"; onClicked: Scenario.addStep("preset", root.defaultPreset(steps.count), 30) }
-                Button { text: "Gradual change"; onClicked: Scenario.addStep("fade", root.defaultPreset(steps.count), 20) }
-                Button { text: "Drop link"; onClicked: Scenario.addStep("outage", "", 10) }
-                Button { text: "Random dropouts"; onClicked: Scenario.addStep("dropouts", "", 60) }
+                AppButton { text: "Hold condition"; onClicked: Scenario.addStep("preset", root.defaultPreset(steps.count), 30) }
+                AppButton { text: "Gradual change"; onClicked: Scenario.addStep("fade", root.defaultPreset(steps.count), 20) }
+                AppButton { text: "Drop link"; onClicked: Scenario.addStep("outage", "", 10) }
+                AppButton { text: "Random dropouts"; onClicked: Scenario.addStep("dropouts", "", 60) }
             }
             RowLayout {
                 Layout.topMargin: 4
@@ -349,12 +355,13 @@ Item {
                     readonly property string blocked: Scenario.state === "stopped" ? Scenario.playBlockedReason : ""
                     implicitWidth: playButton.implicitWidth
                     implicitHeight: playButton.implicitHeight
-                    Button {
+                    AppButton {
                         id: playButton
                         objectName: "scenarioPlay"
                         anchors.fill: parent
                         text: Scenario.state === "playing" ? "Pause" : Scenario.state === "paused" ? "Resume" : "Play"
                         highlighted: Scenario.state !== "playing"
+                        emphasisColor: Theme.ok
                         enabled: parent.blocked === ""
                         onClicked: Scenario.state === "playing" ? Scenario.pause() : Scenario.play()
                     }
@@ -363,7 +370,7 @@ Item {
                     ToolTip.text: blocked !== "" ? blocked : playButton.text + "  (Ctrl+P)"
                     ToolTip.delay: 300
                 }
-                Button {
+                AppButton {
                     text: "Stop"
                     enabled: Scenario.state !== "stopped"
                     property string disabledReason: "The scenario is not playing"
@@ -399,8 +406,8 @@ Item {
                                           + (Reports.reports[0].completed ? "" : " · stopped early") : "")
                     color: Theme.textDim
                 }
-                Button { text: "Open report"; onClicked: Reports.openReport(Reports.reports[0].html) }
-                Button { text: "All reports…"; onClicked: reportsDialog.open() }
+                AppButton { text: "Open report"; onClicked: Reports.openReport(Reports.reports[0].html) }
+                AppButton { text: "All reports…"; onClicked: reportsDialog.open() }
             }
             Label {
                 visible: !Link.active
@@ -411,7 +418,7 @@ Item {
 
 
     }
-    Dialog {
+    AppDialog {
         id: saveAsDialog
         objectName: "scenarioSaveAsDialog"
         title: "Save scenario as"
@@ -431,7 +438,7 @@ Item {
         ColumnLayout {
             anchors.fill: parent
             Label { text: "Name" }
-            TextField {
+            AppTextField {
                 id: saveAsName
                 Layout.fillWidth: true
                 selectByMouse: true
@@ -453,7 +460,7 @@ Item {
         }
     }
     // New scenario from a goal: pick a template, fill in its values, see the result, create.
-    Dialog {
+    AppDialog {
         id: templateDialog
         objectName: "templateDialog"
         title: "New scenario"
@@ -472,14 +479,14 @@ Item {
         function setValue(k, v) { const m = Object.assign({}, values); m[k] = v; values = m }
         onOpened: pick(0)
         footer: DialogButtonBox {
-            Button {
+            AppButton {
                 text: "Create"
                 highlighted: true
                 enabled: (templateDialog.preview.missingPresets || []).length === 0
                 property string disabledReason: "Missing presets: " + (templateDialog.preview.missingPresets || []).join(", ")
                 DialogButtonBox.buttonRole: DialogButtonBox.AcceptRole
             }
-            Button { text: "Cancel"; DialogButtonBox.buttonRole: DialogButtonBox.RejectRole }
+            AppButton { text: "Cancel"; DialogButtonBox.buttonRole: DialogButtonBox.RejectRole }
         }
         onAccepted: {
             const e = preview
@@ -605,7 +612,7 @@ Item {
         }
         Component {
             id: numberField
-            TextField {
+            AppTextField {
                 // Set once: a binding would rewrite the text while typing.
                 Component.onCompleted: text = parent ? parent.value : ""
                 selectByMouse: true
@@ -615,7 +622,7 @@ Item {
         }
         Component {
             id: listField
-            TextField {
+            AppTextField {
                 Component.onCompleted: text = parent ? (parent.value || []).join(", ") : ""
                 selectByMouse: true
                 placeholderText: "e.g. 3, 10, 30"
@@ -626,7 +633,7 @@ Item {
         }
     }
 
-    Dialog {
+    AppDialog {
         id: reportsDialog
         objectName: "reportsDialog"
         title: "Run reports"
@@ -678,18 +685,18 @@ Item {
                             text: modelData.when + " · " + root.fmt(modelData.durationS) + " · " + modelData.outages
                                   + (modelData.outages === 1 ? " outage" : " outages") + (modelData.completed ? "" : " · stopped early")
                         }
-                        Button { text: "Open"; onClicked: Reports.openReport(modelData.html) }
-                        Button {
+                        AppButton { text: "Open"; onClicked: Reports.openReport(modelData.html) }
+                        AppButton {
                             text: "Save page…"
                             onClicked: root.ApplicationWindow.window.askSave("Save report", ["HTML (*.html)"],
                                                                              (url) => Reports.exportHtml(modelData.html, url))
                         }
-                        Button {
+                        AppButton {
                             text: "Save data (.zip)…"
                             onClicked: root.ApplicationWindow.window.askSave("Save report data", ["Zip (*.zip)"],
                                                                              (url) => Reports.exportCsvZip(modelData.json, url))
                         }
-                        ToolButton {
+                        AppToolButton {
                             text: "✕"
                             onClicked: root.ApplicationWindow.window.askConfirm("Delete report", "Delete the report of '"
                                 + modelData.name + "' (" + modelData.when + ")?", "Delete", () => Reports.deleteReport(modelData.json))

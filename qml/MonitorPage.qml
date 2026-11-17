@@ -24,8 +24,8 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 8
-        spacing: 6
+        anchors.margins: Theme.s(16)
+        spacing: Theme.s(10)
 
         RowLayout {
             ColumnLayout {
@@ -42,11 +42,20 @@ Item {
                 current: Stats.windowSeconds
                 onPicked: (v) => Stats.windowSeconds = v
             }
-            Button {
-                text: "Export CSV…"
-                onClicked: root.ApplicationWindow.window.askSave("Export statistics", ["CSV (*.csv)"], (url) => Stats.exportCsv(url))
+            AppToolButton {
+                id: statsMenuButton
+                text: "⋮"
+                onClicked: statsMenu.open()
+                Menu {
+                    id: statsMenu
+                    y: statsMenuButton.height
+                    MenuItem {
+                        text: "Export CSV…"
+                        onTriggered: root.ApplicationWindow.window.askSave("Export statistics", ["CSV (*.csv)"], (url) => Stats.exportCsv(url))
+                    }
+                    MenuItem { text: "Clear history"; onTriggered: Stats.clear() }
+                }
             }
-            Button { text: "Clear"; onClicked: Stats.clear() }
         }
         // Before the first start there is nothing to chart.
         Rectangle {
@@ -56,7 +65,7 @@ Item {
             Layout.minimumHeight: 150
             visible: !Link.active && Stats.sampleCount === 0
             color: Theme.panel
-            border.color: Theme.border
+            border.width: 0
             radius: 4
             EmptyState {
                 anchors.centerIn: parent
@@ -111,7 +120,8 @@ Item {
                 BoundCombo {
                     id: peerPick
                     objectName: "peerPicker"
-                    readonly property var classes: Link.classes.filter(c => c.proto === "tcp" && c.ip && c.port > 0)
+                    readonly property var classes: Link.classes.filter(c => (c.proto === "tcp" || c.proto === "websocket")
+                                                                         && c.ip && c.port > 0)
                     readonly property string currentKey: Sockets.peerIp + ":" + Sockets.peerPort
                     property bool other: false
                     Layout.preferredWidth: Theme.s(260)
@@ -128,7 +138,7 @@ Item {
                         }
                     }
                 }
-                TextField {
+                AppTextField {
                     visible: peerPick.current === "other"
                     Layout.preferredWidth: Theme.s(120)
                     text: Sockets.peerIp
@@ -139,7 +149,7 @@ Item {
                     onEditingFinished: Sockets.peerIp = text
                 }
                 Label { text: ":"; visible: peerPick.current === "other" }
-                TextField {
+                AppTextField {
                     visible: peerPick.current === "other"
                     Layout.preferredWidth: Theme.s(60)
                     text: Sockets.peerPort
@@ -149,25 +159,35 @@ Item {
                     validator: IntValidator { bottom: 1; top: 65535 }
                     onEditingFinished: Sockets.peerPort = Number(text)
                 }
-                Button {
+                AppButton {
                     text: Sockets.running ? "Stop" : "Start"
                     highlighted: !Sockets.running
+                    emphasisColor: Theme.ok
                     enabled: Helper.running
                     property string disabledReason: "The privileged helper is not running (Start helper, at the top)"
                     onClicked: Sockets.running ? Sockets.stop() : Sockets.start()
                 }
-                Button {
-                    text: "Export CSV…"
-                    onClicked: root.ApplicationWindow.window.askSave("Export socket history", ["CSV (*.csv)"], (url) => Sockets.exportCsv(url))
+                AppToolButton {
+                    id: socketMenuButton
+                    text: "⋮"
+                    onClicked: socketMenu.open()
+                    Menu {
+                        id: socketMenu
+                        y: socketMenuButton.height
+                        MenuItem {
+                            text: "Export CSV…"
+                            onTriggered: root.ApplicationWindow.window.askSave("Export socket history", ["CSV (*.csv)"], (url) => Sockets.exportCsv(url))
+                        }
+                        MenuItem { text: "Clear history"; onTriggered: Sockets.clear() }
+                    }
                 }
-                Button { text: "Clear"; onClicked: Sockets.clear() }
                 Label {
                     Layout.fillWidth: true
+                    visible: text.length > 0
                     elide: Text.ElideRight
                     color: Sockets.lastError ? Theme.danger : Theme.textDim
                     text: Sockets.lastError ? Sockets.lastError
-                          : "ss -tnoi dst/src " + Sockets.peerIp + " port " + Sockets.peerPort
-                            + (Sockets.tracked ? " · charting " + Sockets.tracked : "")
+                          : Sockets.tracked ? "Monitoring " + Sockets.tracked : ""
                 }
             }
 
@@ -202,7 +222,7 @@ Item {
                 text: Sockets.running ? "No TCP connection to " + Sockets.peerIp + ":" + Sockets.peerPort + " right now"
                                       : "Pick the peer and press Start to watch its TCP connections."
             }
-            Button {
+            AppButton {
                 id: detailsToggle
                 property bool open: UiSettings.flag("socketDetails", false)
                 flat: true

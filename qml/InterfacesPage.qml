@@ -18,6 +18,8 @@ Item {
 
     readonly property var errs: Link.fieldErrors
     property bool showAllIfaces: false
+    property bool advancedOpen: false
+    property bool trafficOpen: false
     function inUse(n) { return n !== "" && (n === Link.groundIface || n === Link.airIface || n === Link.hostIface) }
     readonly property string helperReason: "The privileged helper is not running (Start helper, at the top)"
     // First problem with the configuration, shown as the Start button's tooltip.
@@ -41,8 +43,8 @@ Item {
 
     RowLayout {
         anchors.fill: parent
-        anchors.margins: 8
-        spacing: 8
+        anchors.margins: Theme.s(16)
+        spacing: Theme.s(16)
 
         ColumnLayout {
             readonly property int sideWidth: Math.max(Theme.s(440), Math.min(Math.round(root.width * 0.42), Theme.s(760)))
@@ -56,14 +58,14 @@ Item {
                 title: "Mode"
                 Layout.fillWidth: true
                 RowLayout {
-                    RadioButton {
+                    AppRadioButton {
                         property string disabledReason: "Stop the link to change the mode"
                         text: "Bridge (two NICs, in line)"
                         checked: Link.mode === "bridge"
                         enabled: !Link.active
                         onToggled: if (checked) Link.mode = "bridge"
                     }
-                    RadioButton {
+                    AppRadioButton {
                         property string disabledReason: "Stop the link to change the mode"
                         text: "Host (this PC's NIC)"
                         checked: Link.mode === "host"
@@ -101,7 +103,7 @@ Item {
                         onPicked: (v) => Link.groundIface = v
                         ErrorFrame { show: !!root.errs.groundIface }
                     }
-                    Button {
+                    AppButton {
                         text: "Identify…"
                         enabled: !Link.active
                         property string disabledReason: "Stop the link to change interfaces"
@@ -122,7 +124,7 @@ Item {
                         onPicked: (v) => Link.airIface = v
                         ErrorFrame { show: !!root.errs.airIface }
                     }
-                    Button {
+                    AppButton {
                         objectName: "identifyAir"
                         text: "Identify…"
                         enabled: !Link.active
@@ -170,13 +172,14 @@ Item {
                                               : "Ready. Start the link with Start at the top right."
                     }
                     Item { Layout.fillWidth: true }
-                    Button { text: "Refresh"; onClicked: Sys.refresh() }
+                    AppButton { text: "Refresh"; onClicked: Sys.refresh() }
                 }
             }
 
             Section {
                 title: "Endpoints"
                 objectName: "endpointsSection"
+                visible: root.advancedOpen
                 Layout.fillWidth: true
                 Label {
                     Layout.fillWidth: true
@@ -191,14 +194,14 @@ Item {
                         required property var modelData
                         required property int index
                         Layout.fillWidth: true
-                        TextField {
+                        AppTextField {
                             Layout.preferredWidth: Theme.s(140)
                             text: epRow.modelData.name
                             selectByMouse: true
                             onEditingFinished: if (text.trim() !== epRow.modelData.name && !Link.renameEndpoint(epRow.modelData.name, text))
                                                    text = epRow.modelData.name
                         }
-                        TextField {
+                        AppTextField {
                             id: epIp
                             Layout.preferredWidth: Theme.s(130)
                             readonly property bool typedValid: text === ""
@@ -216,7 +219,7 @@ Item {
                             text: epRow.modelData.uses === 0 ? "not used" : "used by " + epRow.modelData.uses
                                   + (epRow.modelData.uses === 1 ? " class" : " classes")
                         }
-                        ToolButton {
+                        AppToolButton {
                             text: "✕"
                             onClicked: Link.removeEndpoint(epRow.modelData.name)
                             ToolTip.visible: hovered
@@ -224,11 +227,12 @@ Item {
                         }
                     }
                 }
-                Button { text: "+ Add endpoint"; onClicked: Link.addEndpoint("", "") }
+                AppButton { text: "+ Add endpoint"; onClicked: Link.addEndpoint("", "") }
             }
 
             Section {
                 title: "Network interfaces"
+                visible: root.advancedOpen
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 RowLayout {
@@ -237,7 +241,7 @@ Item {
                         color: Theme.textDim
                         text: root.showAllIfaces ? "All interfaces" : "Physical ports (and the ones in use)"
                     }
-                    CheckBox {
+                    AppCheckBox {
                         objectName: "showAllIfaces"
                         text: "Show all"
                         checked: root.showAllIfaces
@@ -306,15 +310,53 @@ Item {
                     }
                 }
             }
+            RowLayout {
+                Layout.fillWidth: true
+                AppButton {
+                    flat: true
+                    text: (root.advancedOpen ? "▾" : "▸") + " Advanced setup"
+                    onClicked: root.advancedOpen = !root.advancedOpen
+                }
+                Item { Layout.fillWidth: true }
+            }
+            Item { Layout.fillHeight: true; visible: !root.advancedOpen }
         }
 
-        ClassesPanel {
-            Layout.fillWidth: true
+        ColumnLayout {
             Layout.fillHeight: true
+            Layout.fillWidth: true
+            spacing: Theme.s(8)
+            Section {
+                visible: !root.trafficOpen
+                title: "Traffic rules"
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignTop
+                Label {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    color: Theme.textDim
+                    text: Link.classes.filter(c => c.enabled).length + " enabled "
+                          + (Link.classes.filter(c => c.enabled).length === 1 ? "rule" : "rules")
+                          + ". Other traffic " + (Link.otherExcluded ? "is not impaired." : "uses the selected link condition.")
+                }
+                AppButton { text: "Edit traffic rules…"; onClicked: root.trafficOpen = true }
+            }
+            RowLayout {
+                visible: root.trafficOpen
+                Layout.fillWidth: true
+                Item { Layout.fillWidth: true }
+                AppButton { flat: true; text: "Done"; onClicked: root.trafficOpen = false }
+            }
+            ClassesPanel {
+                visible: root.trafficOpen
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+            }
+            Item { Layout.fillHeight: true; visible: !root.trafficOpen }
         }
     }
 
-    Dialog {
+    AppDialog {
         id: confirm
         title: "Impair this interface?"
         modal: true
@@ -340,7 +382,7 @@ Item {
     }
 
     // Unplug-to-identify: the port whose cable is pulled is the one asked for.
-    Dialog {
+    AppDialog {
         id: identifyDialog
         objectName: "identifyDialog"
         property string role: "air"
@@ -366,18 +408,18 @@ Item {
         width: 480
         onClosed: Sys.cancelIdentify()
         footer: DialogButtonBox {
-            Button {
+            AppButton {
                 visible: Sys.identifyState === "found"
                 text: "Use " + Sys.identified
                 highlighted: true
                 onClicked: identifyDialog.use(Sys.identified)
             }
-            Button {
+            AppButton {
                 visible: Sys.identifyState === "ambiguous" || Sys.identifyState === "found"
                 text: "Try again"
                 onClicked: Sys.startIdentify(identifyDialog.candidates)
             }
-            Button { text: "Cancel"; onClicked: identifyDialog.close() }
+            AppButton { text: "Cancel"; onClicked: identifyDialog.close() }
         }
         ColumnLayout {
             anchors.fill: parent

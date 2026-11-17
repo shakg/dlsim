@@ -10,6 +10,7 @@ Item {
 
     readonly property bool bridge: Link.mode === "bridge"
     readonly property bool clean: Link.validationErrors.length === 0
+    property bool advancedOpen: false
 
     function fmt(s) {
         s = Math.max(0, s)
@@ -32,9 +33,9 @@ Item {
         property string subtitle
         property string iface
         readonly property var lv: Sys.live[iface] || ({})
-        radius: 6
+        radius: Theme.radius
         color: Theme.panelAlt
-        border.color: Theme.border
+        border.width: 0
         implicitWidth: Theme.s(170)
         implicitHeight: Theme.s(84)
         Column {
@@ -90,36 +91,19 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 16
-        spacing: 16
-
-        // State and main actions
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 12
-            StateBadge { objectName: "homeStateBadge"; fontSize: 18 }
-            Label {
-                Layout.fillWidth: true
-                elide: Text.ElideRight
-                color: Theme.textDim
-                text: Link.cut && Link.active ? "Cut by: " + Link.cutSources.join(", ")
-                      : !root.clean ? "Setup is incomplete: " + Link.validationErrors[0]
-                      : !Link.active ? "Press Start to impair the link."
-                      : Scenario.fading ? "Changing the link gradually"
-                      : "Preset " + (Link.activePreset || "(custom)")
-            }
-        }
+        anchors.margins: Theme.s(20)
+        spacing: Theme.s(16)
 
         // Diagram
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: Theme.s(230)
             color: Theme.panel
-            border.color: Theme.border
-            radius: 4
+            border.width: 0
+            radius: Theme.radiusLarge
             RowLayout {
                 anchors.fill: parent
-                anchors.margins: 20
+                anchors.margins: Theme.s(24)
                 spacing: 12
                 Node {
                     title: root.bridge ? Link.groundName : "This PC"
@@ -136,16 +120,6 @@ Item {
                         toVehicle: true
                         profile: Link.uplink
                         stats: Stats.uplink
-                    }
-                    Rectangle {
-                        Layout.alignment: Qt.AlignHCenter
-                        visible: root.bridge
-                        radius: 4
-                        color: Theme.bg
-                        border.color: Theme.accent
-                        implicitWidth: dlsimLabel.implicitWidth + 20
-                        implicitHeight: dlsimLabel.implicitHeight + 8
-                        Label { id: dlsimLabel; anchors.centerIn: parent; text: "DLSim · " + "br-dlsim"; color: Theme.accent }
                     }
                     Lane {
                         Layout.fillWidth: true
@@ -164,65 +138,40 @@ Item {
             }
         }
 
-        // Quick actions
-        RowLayout {
+        // Immediate outage control; condition and scenario editing live in their tabs.
+        Section {
+            title: "Timed outage"
             Layout.fillWidth: true
-            spacing: 12
-
-            Section {
-                title: "Condition"
+            RowLayout {
                 Layout.fillWidth: true
-                Layout.alignment: Qt.AlignTop
-                RowLayout {
-                    Label {
-                        Layout.fillWidth: true
-                        elide: Text.ElideRight
-                        font.pixelSize: Theme.fontBase + 2
-                        text: Link.activePreset || "(custom)"
-                    }
-                    Button { text: "Change…"; onClicked: root.openTab(2) }
-                }
-            }
-
-            Section {
-                title: "Timed outage"
-                Layout.fillWidth: true
-                Layout.alignment: Qt.AlignTop
-                RowLayout {
-                    SpinBox { id: outageSecs; objectName: "outageSeconds"; from: 1; to: 3600; value: 10; editable: true; Layout.preferredWidth: Theme.s(110) }
-                    Label { text: "s"; color: Theme.textDim }
-                    Button {
-                        objectName: "timedOutageButton"
-                        Layout.fillWidth: true
-                        text: Link.outageRemaining > 0 ? "Cut… " + Link.outageRemaining.toFixed(1) + " s left" : "Cut for " + outageSecs.value + " s"
-                        enabled: Link.active && Link.outageRemaining <= 0
-                        property string disabledReason: !Link.active ? "Start the link first" : "An outage is already running"
-                        onClicked: Link.timedOutage(outageSecs.value)
-                    }
-                }
-            }
-
-            Section {
-                title: "Scenario"
-                Layout.fillWidth: true
-                Layout.alignment: Qt.AlignTop
-                RowLayout {
-                    Label {
-                        Layout.fillWidth: true
-                        elide: Text.ElideRight
-                        text: Scenario.name + (Scenario.state === "stopped" ? "" : " · " + Scenario.state)
-                    }
-                    Button {
-                        text: Scenario.state === "playing" ? "Pause" : Scenario.state === "paused" ? "Resume" : "Play"
-                        enabled: Scenario.state !== "stopped" || Scenario.playBlockedReason === ""
-                        property string disabledReason: Scenario.playBlockedReason
-                        onClicked: Scenario.state === "playing" ? Scenario.pause() : Scenario.play()
-                    }
-                    Button { text: "Open…"; onClicked: root.openTab(3) }
+                AppSpinBox { id: outageSecs; objectName: "outageSeconds"; from: 1; to: 3600; value: 10; editable: true; Layout.preferredWidth: Theme.s(110) }
+                Label { text: "s"; color: Theme.textDim }
+                AppButton {
+                    objectName: "timedOutageButton"
+                    Layout.fillWidth: true
+                    text: Link.outageRemaining > 0 ? "Cut… " + Link.outageRemaining.toFixed(1) + " s left" : "Cut for " + outageSecs.value + " s"
+                    enabled: Link.active && Link.outageRemaining <= 0
+                    property string disabledReason: !Link.active ? "Start the link first" : "An outage is already running"
+                    onClicked: Link.timedOutage(outageSecs.value)
                 }
             }
         }
         RowLayout {
+            Layout.fillWidth: true
+            AppButton {
+                flat: true
+                text: (root.advancedOpen ? "▾" : "▸") + " More link events"
+                onClicked: root.advancedOpen = !root.advancedOpen
+            }
+            Label {
+                Layout.fillWidth: true
+                color: Theme.textDim
+                text: Scenario.dropoutsEnabled ? "Random dropouts enabled"
+                      : Scenario.fading ? "Gradual change running" : ""
+            }
+        }
+        RowLayout {
+            visible: root.advancedOpen || Scenario.fading || Scenario.dropoutsEnabled
             Layout.fillWidth: true
             spacing: 12
 
@@ -230,13 +179,6 @@ Item {
                 title: "Gradual change"
                 Layout.fillWidth: true
                 Layout.alignment: Qt.AlignTop
-                Label {
-                    Layout.fillWidth: true
-                    wrapMode: Text.WordWrap
-                    color: Theme.textDim
-                    text: "Ramps delay, jitter, loss and rate from the current profiles to a preset, "
-                          + "updating netem with tc qdisc change."
-                }
                 GridLayout {
                     columns: 2
                     Label { text: "To preset" }
@@ -251,23 +193,14 @@ Item {
                     }
                     Label { text: "Duration" }
                     RowLayout {
-                        SpinBox { id: fadeSeconds; from: 1; to: 3600; value: 20; editable: true }
+                        AppSpinBox { id: fadeSeconds; from: 1; to: 3600; value: 20; editable: true }
                         Label { text: "s"; color: Theme.textDim }
-                    }
-                    Label { text: "Update rate" }
-                    RowLayout {
-                        SpinBox {
-                            from: 1; to: 10; editable: true
-                            value: Scenario.fadeRateHz
-                            onValueModified: { Scenario.fadeRateHz = value; value = Qt.binding(() => Scenario.fadeRateHz) }
-                        }
-                        Label { text: "Hz"; color: Theme.textDim }
                     }
                 }
                 RowLayout {
-                    Button { text: "Fade"; highlighted: true; property string disabledReason: "Choose a preset to fade to"; enabled: fadeTarget.currentIndex >= 0; onClicked: Scenario.fadeTo(fadeTarget.chosen, fadeSeconds.value) }
-                    Button { text: "Fade back"; onClicked: Scenario.fadeBack() }
-                    Button { text: "Stop"; property string disabledReason: "No fade is running"; enabled: Scenario.fading; onClicked: Scenario.stopFade() }
+                    AppButton { text: "Fade"; highlighted: true; emphasisColor: Theme.ok; property string disabledReason: "Choose a preset to fade to"; enabled: fadeTarget.currentIndex >= 0; onClicked: Scenario.fadeTo(fadeTarget.chosen, fadeSeconds.value) }
+                    AppButton { text: "Fade back"; onClicked: Scenario.fadeBack() }
+                    AppButton { text: "Stop"; property string disabledReason: "No fade is running"; enabled: Scenario.fading; onClicked: Scenario.stopFade() }
                 }
                 ProgressBar {
                     Layout.fillWidth: true
@@ -280,12 +213,6 @@ Item {
                 title: "Random dropouts"
                 Layout.fillWidth: true
                 Layout.alignment: Qt.AlignTop
-                Label {
-                    Layout.fillWidth: true
-                    wrapMode: Text.WordWrap
-                    color: Theme.textDim
-                    text: "Poisson process: exponential time between outages and exponential outage length."
-                }
                 Switch {
                     text: Scenario.dropoutsEnabled ? "Enabled" : "Disabled"
                     checked: Scenario.dropoutsEnabled

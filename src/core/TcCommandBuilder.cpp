@@ -215,7 +215,7 @@ QStringList filterMatchArgs(const Filter &f)
 {
     QStringList a;
     if (f.proto != Proto::Any)
-        a << "ip_proto" << toString(f.proto);
+        a << "ip_proto" << (f.proto == Proto::WebSocket ? QStringLiteral("tcp") : toString(f.proto));
     if (!f.srcIp.isEmpty())
         a << "src_ip" << f.srcIp;
     if (!f.dstIp.isEmpty())

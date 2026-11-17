@@ -53,6 +53,8 @@ void TestModel::classProtoWithPortsKeepsPort()
     c.port = 4555;
     QCOMPARE(c.withField("proto", "udp").port, quint16(4555));
     QVERIFY(c.withField("proto", "udp").proto == Proto::Udp);
+    QCOMPARE(c.withField("proto", "websocket").port, quint16(4555));
+    QVERIFY(c.withField("proto", "websocket").proto == Proto::WebSocket);
 }
 
 void TestModel::classWithFieldKeepsOtherFields()

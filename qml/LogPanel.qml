@@ -10,9 +10,9 @@ ColumnLayout {
     RowLayout {
         Label { text: Log.count + " events"; color: Theme.textDim }
         Item { Layout.fillWidth: true }
-        CheckBox { id: follow; text: "Follow"; checked: true }
-        Button { text: "Export CSV…"; onClicked: root.ApplicationWindow.window.askSave("Export log", ["CSV (*.csv)"], (url) => Log.exportCsv(url)) }
-        Button { text: "Clear"; onClicked: Log.clear() }
+        AppCheckBox { id: follow; text: "Follow"; checked: true }
+        AppButton { text: "Export CSV…"; onClicked: root.ApplicationWindow.window.askSave("Export log", ["CSV (*.csv)"], (url) => Log.exportCsv(url)) }
+        AppButton { text: "Clear"; onClicked: Log.clear() }
     }
     ListView {
         id: view

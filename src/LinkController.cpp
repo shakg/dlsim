@@ -766,7 +766,6 @@ void LinkController::loadSettings()
 {
     QSettings s;
     const QJsonDocument d = QJsonDocument::fromJson(s.value("link/config").toString().toUtf8());
-    m_hasSavedConfig = d.isObject();
     m_groundName = s.value("names/ground", m_groundName).toString();
     m_vehicleName = s.value("names/vehicle", m_vehicleName).toString();
     if (d.isObject()) {

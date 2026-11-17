@@ -61,6 +61,7 @@ sudo apt install \
     qml6-module-qtquick-window qml6-module-qtquick-templates \
     qml6-module-qtqml-workerscript qml6-module-qtquick-dialogs \
     qml6-module-qt-labs-folderlistmodel qml6-module-qtcharts \
+    qml6-module-qt5compat-graphicaleffects \
     qt6-qpa-plugins \
     iproute2 pkexec polkitd
 # self-test only:
@@ -196,15 +197,10 @@ Before using bridge mode, stop NetworkManager from managing the two NICs
 
 ## Using it
 
-**First run.** With no saved configuration a setup wizard opens: Welcome
-(what DLSim does and why it asks for your password; the helper starts only
-when you continue), Where is this PC (between two devices = bridge, or on the
-ground PC = host), Ports (with live link and traffic per port, Identify by
-unplugging, and names for the two ends, e.g. "Ground station" and "Drone",
-used in labels throughout), Traffic (templates; SSH is kept clean and in host
-mode other traffic is left alone by default, with the reason shown), Starting
-condition (preset cards) and Review + Start. Back and Next keep your choices;
-Cancel leaves the app as it was. Run it again from **⋮ → Run setup again…**.
+**First run.** DLSim opens the Setup tab when configuration is incomplete.
+Choose bridge or host mode, pick the ports, review traffic classes, then use
+Start in the header. Validation stays next to the fields it refers to, and the
+Home tab summarizes what is missing.
 
 The window has a header, five tabs, a status bar and a collapsible bottom
 panel. Text follows the desktop font size (at least 13 px) and the zoom;
@@ -238,7 +234,7 @@ route or an SSH session, before enslaving an interface with addresses to the
 bridge, and when NetworkManager manages a bridge port. **Start** creates the
 bridge (bridge mode) and applies the profiles; **Stop** removes them. The
 right side holds the **traffic classes**, added with **Add traffic ▾** from templates (MAVLink
-TCP/UDP, RTSP/RTP video, SSH, HTTP, custom; `presets/traffic.json`) that ask
+TCP/UDP, RTSP/RTP video, SSH, HTTP, WebSocket, custom; `presets/traffic.json`) that ask
 for the endpoint and fill protocol and port. Each row reads as a sentence
 ("Telemetry · TCP to/from Vehicle:4555 · uses link profile"); **Edit** opens
 its fields. **Endpoints** (left) name the devices, e.g. *Vehicle* = 192.0.2.10;
@@ -247,7 +243,8 @@ protocol + IP (or endpoint) + port, each using the
 link profile, a custom profile (own uplink/downlink netem), or excluded. A
 class matches packets *to or from* IP:port, so one class covers both
 directions. First match wins. "Other traffic" uses the link profile or is
-excluded.
+excluded. WebSocket classes are matched as TCP by IP and port; DLSim does not
+inspect the HTTP upgrade or distinguish WSS from other TLS traffic on that port.
 
 **Link.** A plain-language summary of the link ("≈ 80 ms round trip · about
 1 in 100 packets lost · max 2 Mbit/s") and two editor modes (the choice is

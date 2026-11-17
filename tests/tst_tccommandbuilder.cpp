@@ -392,6 +392,9 @@ void TestTcCommandBuilder::filterMatchVariants_data()
     QTest::newRow("tcp ip port") << int(Proto::Tcp) << "192.0.2.10" << 4555
                                  << QStringList{"pref 10 flower ip_proto tcp dst_ip 192.0.2.10 dst_port 4555 classid 1d:2",
                                                 "pref 11 flower ip_proto tcp src_ip 192.0.2.10 src_port 4555 classid 1d:2"};
+    QTest::newRow("websocket ip port") << int(Proto::WebSocket) << "192.0.2.10" << 8080
+                                       << QStringList{"pref 10 flower ip_proto tcp dst_ip 192.0.2.10 dst_port 8080 classid 1d:2",
+                                                      "pref 11 flower ip_proto tcp src_ip 192.0.2.10 src_port 8080 classid 1d:2"};
     QTest::newRow("icmp ip") << int(Proto::Icmp) << "192.0.2.10" << 0
                              << QStringList{"pref 10 flower ip_proto icmp dst_ip 192.0.2.10 classid 1d:2",
                                             "pref 11 flower ip_proto icmp src_ip 192.0.2.10 classid 1d:2"};
