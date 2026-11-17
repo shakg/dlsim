@@ -25,6 +25,8 @@ public:
     Q_INVOKABLE void refresh();
     // Human-readable warnings for impairing the given interfaces in the given mode.
     Q_INVOKABLE QStringList warningsFor(const QString &mode, const QString &ifaceA, const QString &ifaceB = {}) const;
+    // True if NetworkManager manages the interface (it may undo DLSim's bridge).
+    Q_INVOKABLE bool managedByNetworkManager(const QString &iface) const { return m_nmManaged.contains(iface); }
 
 Q_SIGNALS:
     void changed();
@@ -35,4 +37,5 @@ private:
     QStringList m_defaultRoute;
     QStringList m_ssh;
     QHash<QString, QStringList> m_addresses;
+    QStringList m_nmManaged;
 };

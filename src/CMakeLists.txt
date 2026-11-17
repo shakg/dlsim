@@ -11,6 +11,7 @@ qt_add_executable(dlsim
     StatsPoller.h StatsPoller.cpp
     SystemInfo.h SystemInfo.cpp
     UiSettings.h
+    Notifications.h Notifications.cpp
 )
 
 target_compile_definitions(dlsim PRIVATE DLSIM_HELPER_INSTALL_PATH="${DLSIM_HELPER_INSTALL_PATH}")

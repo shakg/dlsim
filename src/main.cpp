@@ -3,6 +3,7 @@
 #include "EventLog.h"
 #include "HelperClient.h"
 #include "LinkController.h"
+#include "Notifications.h"
 #include "PresetStore.h"
 #include "ScenarioEngine.h"
 #include "SocketMonitor.h"
@@ -130,6 +131,30 @@ int main(int argc, char *argv[])
     StatsPoller stats(&helper, &link, &log);
     SocketMonitor sockets(&helper, &log);
     UiSettings uiSettings;
+    Notifications notifications;
+
+    // Failures become notifications with a cause and a fix.
+    QObject::connect(&link, &LinkController::errorOccurred, &notifications,
+                     [&](const QString &context, const QString &msg) { notifications.report(context, msg); });
+    QObject::connect(&helper, &HelperClient::stateChanged, &notifications, [&] {
+        if (helper.state() == HelperClient::Failed)
+            notifications.report("helper", helper.statusText());
+    });
+    QObject::connect(&sockets, &SocketMonitor::failed, &notifications,
+                     [&](const QString &err) { notifications.report("socket", err); });
+    // NetworkManager can take a bridge port back; say so once the bridge is up.
+    QObject::connect(&link, &LinkController::appliedChanged, &notifications, [&] {
+        if (!link.bridgeUp())
+            return;
+        for (const QString &nic : {link.groundIface(), link.airIface()})
+            if (sys.managedByNetworkManager(nic))
+                notifications.add("warning",
+                                  QStringLiteral("%1 is managed by NetworkManager and may undo the bridge").arg(nic),
+                                  QStringLiteral("Stop NetworkManager from managing it while you test. "
+                                                 "Undo later with: nmcli device set %1 managed yes").arg(nic),
+                                  {}, "copy-command", QStringLiteral("Copy command"),
+                                  QStringLiteral("nmcli device set %1 managed no").arg(nic));
+    });
 
     qmlRegisterSingletonInstance("DLSim", 1, 0, "Log", &log);
     qmlRegisterSingletonInstance("DLSim", 1, 0, "Helper", &helper);
@@ -140,6 +165,7 @@ int main(int argc, char *argv[])
     qmlRegisterSingletonInstance("DLSim", 1, 0, "Stats", &stats);
     qmlRegisterSingletonInstance("DLSim", 1, 0, "Sockets", &sockets);
     qmlRegisterSingletonInstance("DLSim", 1, 0, "UiSettings", &uiSettings);
+    qmlRegisterSingletonInstance("DLSim", 1, 0, "Notifications", &notifications);
 
     QObject::connect(&app, &QCoreApplication::aboutToQuit, [&] {
         scenario.stop();

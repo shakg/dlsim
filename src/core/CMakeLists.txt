@@ -2,6 +2,7 @@ add_library(dlsim_core STATIC
     Model.h Model.cpp
     TcCommandBuilder.h TcCommandBuilder.cpp
     Parsers.h Parsers.cpp
+    ErrorExplainer.h ErrorExplainer.cpp
 )
 target_include_directories(dlsim_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(dlsim_core PUBLIC Qt6::Core)

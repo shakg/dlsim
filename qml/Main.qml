@@ -74,6 +74,19 @@ ApplicationWindow {
         return false
     }
     readonly property bool shortcutsOn: !inPopup()
+    // Buttons offered by notifications (see dlsim::explainError).
+    // Retrying or refreshing answers the error, so it is dismissed; a copied command is not.
+    function runAction(action, arg, id) {
+        if (action === "retry-helper")
+            Helper.start()
+        else if (action === "refresh-interfaces")
+            Sys.refresh()
+        else if (action === "copy-command")
+            Notifications.copyToClipboard(arg)
+        if (action !== "copy-command" && id !== undefined)
+            Notifications.dismiss(id)
+    }
+
     // Why Start can't run now; empty when it can.
     readonly property string startBlockedReason:
         !Helper.running ? "The privileged helper is not running (Start helper, at the top)"
@@ -272,6 +285,112 @@ ApplicationWindow {
             }
             Item { Layout.fillWidth: true }
 
+            ToolButton {
+                id: bell
+                objectName: "notificationsButton"
+                text: "🔔"
+                font.pixelSize: 16
+                onClicked: { notificationList.open(); Notifications.markRead() }
+                ToolTip.visible: hovered
+                ToolTip.text: "Errors and warnings of this session"
+                Rectangle {
+                    visible: Notifications.unread > 0
+                    anchors { right: parent.right; top: parent.top; rightMargin: 2; topMargin: 2 }
+                    width: Math.max(16, bellCount.implicitWidth + 6)
+                    height: 16
+                    radius: 8
+                    color: Theme.danger
+                    Label { id: bellCount; anchors.centerIn: parent; text: Notifications.unread; color: "white"; font.pixelSize: 10; font.bold: true }
+                }
+                Popup {
+                    id: notificationList
+                    objectName: "notificationList"
+                    y: bell.height + 4
+                    x: bell.width - width
+                    width: 520
+                    height: Math.min(460, win.height - 120)
+                    padding: 8
+                    background: Rectangle { color: Theme.panel; border.color: Theme.border; radius: 4 }
+                    ColumnLayout {
+                        anchors.fill: parent
+                        spacing: 6
+                        RowLayout {
+                            Label { text: "Notifications"; font.bold: true; Layout.fillWidth: true }
+                            Button { text: "Clear all"; enabled: Notifications.items.length > 0
+                                     property string disabledReason: "Nothing to clear"
+                                     onClicked: Notifications.clear() }
+                        }
+                        ListView {
+                            id: notifView
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            clip: true
+                            spacing: 6
+                            model: Notifications.items
+                            ScrollBar.vertical: ScrollBar {}
+                            Label {
+                                anchors.centerIn: parent
+                                visible: notifView.count === 0
+                                color: Theme.textDim
+                                text: "No errors or warnings so far."
+                            }
+                            delegate: Rectangle {
+                                id: nrow
+                                required property var modelData
+                                property bool showDetails: false
+                                width: notifView.width - 12
+                                height: ncol.implicitHeight + 10
+                                radius: 3
+                                color: Theme.panelAlt
+                                border.color: modelData.level === "error" ? Theme.danger : Theme.warn
+                                opacity: modelData.dismissed ? 0.75 : 1
+                                ColumnLayout {
+                                    id: ncol
+                                    anchors { left: parent.left; right: parent.right; top: parent.top; margins: 5 }
+                                    spacing: 2
+                                    RowLayout {
+                                        Label { text: nrow.modelData.time; color: Theme.textDim; font.family: Theme.mono }
+                                        Label {
+                                            Layout.fillWidth: true
+                                            wrapMode: Text.WordWrap
+                                            font.bold: true
+                                            color: nrow.modelData.level === "error" ? "#ff8a80" : Theme.warn
+                                            text: nrow.modelData.title + (nrow.modelData.count > 1 ? "  (×" + nrow.modelData.count + ")" : "")
+                                        }
+                                    }
+                                    Label {
+                                        Layout.fillWidth: true
+                                        visible: text.length > 0
+                                        wrapMode: Text.WordWrap
+                                        text: nrow.modelData.fix
+                                    }
+                                    RowLayout {
+                                        Button {
+                                            visible: !!nrow.modelData.action
+                                            text: nrow.modelData.actionLabel
+                                            onClicked: win.runAction(nrow.modelData.action, nrow.modelData.actionArg, nrow.modelData.id)
+                                        }
+                                        Button {
+                                            visible: !!nrow.modelData.details && nrow.modelData.details !== nrow.modelData.title
+                                            text: nrow.showDetails ? "Hide details" : "Details"
+                                            onClicked: nrow.showDetails = !nrow.showDetails
+                                        }
+                                    }
+                                    Label {
+                                        Layout.fillWidth: true
+                                        visible: nrow.showDetails
+                                        wrapMode: Text.WrapAnywhere
+                                        font.family: Theme.mono
+                                        color: Theme.textDim
+                                        text: nrow.modelData.details
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             Label { text: "Outage" }
             SpinBox { id: outageSecs; from: 1; to: 3600; value: 10; editable: true; Layout.preferredWidth: 100 }
             Label { text: "s"; color: Theme.textDim }
@@ -391,7 +510,7 @@ ApplicationWindow {
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 34
-            visible: Helper.state === 3 || Helper.state === 0
+            visible: Helper.state === 0 || (Helper.state === 3 && Notifications.current.action !== "retry-helper")
             color: Theme.dangerDark
             RowLayout {
                 anchors.fill: parent
@@ -406,29 +525,66 @@ ApplicationWindow {
             }
         }
 
-        // Error toast
+        // Newest error: stays until dismissed. Older ones are in the bell list.
         Rectangle {
-            id: toast
+            id: errorBanner
+            objectName: "errorBanner"
+            readonly property var n: Notifications.current
+            property bool showDetails: false
             Layout.fillWidth: true
-            Layout.preferredHeight: visible ? toastText.implicitHeight + 12 : 0
-            visible: false
+            Layout.preferredHeight: visible ? bannerCol.implicitHeight + 12 : 0
+            visible: n.id !== undefined
             color: "#5d1f1f"
-            property alias text: toastText.text
-            Label {
-                id: toastText
+            property int shownId: n.id === undefined ? -1 : n.id
+            onShownIdChanged: showDetails = false
+            RowLayout {
                 anchors.fill: parent
                 anchors.margins: 6
-                wrapMode: Text.WordWrap
-                color: "white"
-            }
-            Timer { id: toastTimer; interval: 8000; onTriggered: toast.visible = false }
-            TapHandler { onTapped: toast.visible = false }
-            Connections {
-                target: Link
-                function onErrorOccurred(message) {
-                    toast.text = message
-                    toast.visible = true
-                    toastTimer.restart()
+                anchors.leftMargin: 10
+                spacing: 8
+                ColumnLayout {
+                    id: bannerCol
+                    Layout.fillWidth: true
+                    spacing: 2
+                    Label {
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        color: "white"
+                        font.bold: true
+                        text: (errorBanner.n.title || "") + (errorBanner.n.count > 1 ? "  (×" + errorBanner.n.count + ")" : "")
+                    }
+                    Label {
+                        Layout.fillWidth: true
+                        visible: text.length > 0
+                        wrapMode: Text.WordWrap
+                        color: "#f4d6d6"
+                        text: errorBanner.n.fix || ""
+                    }
+                    Label {
+                        Layout.fillWidth: true
+                        visible: errorBanner.showDetails
+                        wrapMode: Text.WrapAnywhere
+                        font.family: Theme.mono
+                        color: "#f4d6d6"
+                        text: errorBanner.n.details || ""
+                    }
+                }
+                Button {
+                    visible: !!errorBanner.n.action
+                    text: errorBanner.n.actionLabel || ""
+                    onClicked: win.runAction(errorBanner.n.action, errorBanner.n.actionArg, errorBanner.n.id)
+                }
+                Button {
+                    visible: !!errorBanner.n.details && errorBanner.n.details !== errorBanner.n.title
+                    text: errorBanner.showDetails ? "Hide details" : "Details"
+                    onClicked: errorBanner.showDetails = !errorBanner.showDetails
+                }
+                ToolButton {
+                    text: "✕"
+                    Layout.alignment: Qt.AlignTop
+                    onClicked: Notifications.dismiss(errorBanner.n.id)
+                    ToolTip.visible: hovered
+                    ToolTip.text: "Dismiss (kept in the notification list)"
                 }
             }
         }

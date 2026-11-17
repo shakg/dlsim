@@ -284,7 +284,7 @@ void LinkController::start()
     const QStringList errs = m_edit.validate(m_sys->interfaceNames());
     if (!errs.isEmpty()) {
         m_log->log("error", QStringLiteral("cannot start: %1").arg(errs.join("; ")));
-        Q_EMIT errorOccurred(errs.join("\n"));
+        Q_EMIT errorOccurred("start", errs.join("\n"));
         return;
     }
     auto applyFirst = [this] { sendApply(QStringLiteral("started (%1 mode)").arg(mode()), true); };
@@ -301,6 +301,7 @@ void LinkController::start()
             markInactive();
             if (!ok) {
                 m_log->log("error", QStringLiteral("reset failed: %1").arg(err));
+                Q_EMIT errorOccurred("apply", err);
                 return;
             }
             start();
@@ -318,7 +319,7 @@ void LinkController::start()
                               Q_EMIT busyChanged();
                               if (!ok) {
                                   m_log->log("error", QStringLiteral("bridge setup failed: %1").arg(err));
-                                  Q_EMIT errorOccurred(err);
+                                  Q_EMIT errorOccurred("bridge", err);
                                   return;
                               }
                               if (!res.value("unchanged").toBool()) {
@@ -387,7 +388,7 @@ void LinkController::sendApply(const QString &reason, bool force)
                                   Q_EMIT appliedChanged();
                           } else {
                               m_log->log("error", err);
-                              Q_EMIT errorOccurred(err);
+                              Q_EMIT errorOccurred("apply", err);
                               // The helper removes the impairment when an apply fails.
                               if (isActive()) {
                                   m_applied.reset();
@@ -414,6 +415,7 @@ void LinkController::stop()
         Q_EMIT busyChanged();
         if (!ok) {
             m_log->log("error", QStringLiteral("%1 failed: %2").arg(op, err));
+            Q_EMIT errorOccurred("apply", err);
             return;
         }
         m_log->log("apply", "impairment removed, link is clean");
@@ -430,6 +432,7 @@ void LinkController::reset()
         Q_EMIT busyChanged();
         if (!ok) {
             m_log->log("error", QStringLiteral("reset failed: %1").arg(err));
+            Q_EMIT errorOccurred("apply", err);
             return;
         }
         m_log->log("apply", "reset: every qdisc, filter, IFB and bridge created by DLSim removed");
@@ -522,6 +525,7 @@ void LinkController::sendCutState()
     m_helper->request(want ? "cut" : "restore", {}, [this, want](bool ok, const QJsonObject &, const QString &err) {
         if (!ok) {
             m_log->log("error", QStringLiteral("%1 failed: %2").arg(want ? "cut" : "restore", err));
+            Q_EMIT errorOccurred("apply", err);
             return;
         }
         if (m_applied) {

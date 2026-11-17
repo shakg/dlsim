@@ -48,6 +48,7 @@ Q_SIGNALS:
     void configChanged();
     void runningChanged();
     void updated();
+    void failed(const QString &error); // on the first failure after a success
 
 private:
     struct Point {

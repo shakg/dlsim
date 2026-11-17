@@ -78,6 +78,8 @@ void SocketMonitor::poll()
                       [this](bool ok, const QJsonObject &res, const QString &err) {
                           m_inFlight = false;
                           if (!ok) {
+                              if (m_lastError != err)
+                                  Q_EMIT failed(err);
                               m_lastError = err;
                               Q_EMIT updated();
                               return;

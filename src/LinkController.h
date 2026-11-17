@@ -126,7 +126,8 @@ Q_SIGNALS:
     void outageChanged();
     void previewChanged();
     void lastExecutedChanged();
-    void errorOccurred(const QString &message);
+    // context: see dlsim::explainError
+    void errorOccurred(const QString &context, const QString &message);
 
 private:
     void edited(bool presetModified = true);

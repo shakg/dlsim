@@ -48,6 +48,15 @@ void SystemInfo::refresh()
     m_defaultRoute.clear();
     m_ssh.clear();
     m_addresses.clear();
+    m_nmManaged.clear();
+
+    // nmcli -t: "enp1s0:connected", "enp2s0:unmanaged". Missing nmcli = no NetworkManager.
+    for (const QString &line : QString::fromUtf8(runTool("nmcli", {"-t", "-f", "DEVICE,STATE", "device", "status"}))
+                                   .split('\n', Qt::SkipEmptyParts)) {
+        const QString dev = line.section(':', 0, 0), state = line.section(':', 1);
+        if (!dev.isEmpty() && state != "unmanaged")
+            m_nmManaged << dev;
+    }
 
     // Local addresses that carry an SSH session: from our own environment and
     // from established connections to a local sshd.
@@ -108,7 +117,7 @@ QStringList SystemInfo::warningsFor(const QString &mode, const QString &ifaceA, 
 {
     QStringList w;
     QStringList ifaces{ifaceA};
-    if (mode == "bridge")
+    if (mode == "bridge" && ifaceB != ifaceA)
         ifaces << ifaceB;
     for (const QString &i : ifaces) {
         if (i.isEmpty())
@@ -128,6 +137,9 @@ QStringList SystemInfo::warningsFor(const QString &mode, const QString &ifaceA, 
             else if (!m_addresses.value(i).isEmpty())
                 w << QStringLiteral("%1 has addresses (%2) that stop working while it is a bridge port.")
                          .arg(i, m_addresses.value(i).join(", "));
+            if (m_nmManaged.contains(i))
+                w << QStringLiteral("%1 is managed by NetworkManager, which may undo the bridge. "
+                                    "Stop managing it while testing: nmcli device set %1 managed no").arg(i);
         } else {
             if (route)
                 w << QStringLiteral("%1 carries the default route. With 'Other' traffic impaired, everything on "
