@@ -147,8 +147,9 @@ Item {
                             onClicked: root.startChecked()
                         }
                         HoverHandler { id: startHover }
-                        ToolTip.visible: root.firstError !== "" && startHover.hovered
-                        ToolTip.text: "Fix first: " + root.firstError
+                        ToolTip.visible: startHover.hovered
+                        ToolTip.text: root.firstError !== "" ? "Fix first: " + root.firstError
+                                                             : startButton.text + "  (Ctrl+Enter)"
                         ToolTip.delay: 300
                     }
                     Button {

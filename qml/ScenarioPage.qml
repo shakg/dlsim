@@ -272,11 +272,17 @@ Item {
                         onClicked: Scenario.state === "playing" ? Scenario.pause() : Scenario.play()
                     }
                     HoverHandler { id: playHover }
-                    ToolTip.visible: blocked !== "" && playHover.hovered
-                    ToolTip.text: blocked
+                    ToolTip.visible: playHover.hovered
+                    ToolTip.text: blocked !== "" ? blocked : playButton.text + "  (Ctrl+P)"
                     ToolTip.delay: 300
                 }
-                Button { text: "Stop"; enabled: Scenario.state !== "stopped"; onClicked: Scenario.stop() }
+                Button {
+                    text: "Stop"
+                    enabled: Scenario.state !== "stopped"
+                    onClicked: Scenario.stop()
+                    ToolTip.visible: hovered
+                    ToolTip.text: "Stop the scenario  (Ctrl+.)"
+                }
                 Label {
                     Layout.fillWidth: true
                     elide: Text.ElideRight

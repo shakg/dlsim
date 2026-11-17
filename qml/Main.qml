@@ -60,6 +60,108 @@ ApplicationWindow {
         }
     }
 
+    // ---------------------------------------------------------------- keyboard shortcuts
+    // True while a text field has focus, so Space types a space there.
+    function typing() {
+        const f = win.activeFocusItem
+        return !!f && f.cursorPosition !== undefined && !f.readOnly
+    }
+    // True while focus is inside a popup (dialog, combo list): shortcuts stay out of its way.
+    function inPopup() {
+        for (let i = win.activeFocusItem; i; i = i.parent)
+            if (i === Overlay.overlay)
+                return true
+        return false
+    }
+    readonly property bool shortcutsOn: !inPopup()
+    function startOrApply() {
+        if (!Helper.running || Link.busy || Link.validationErrors.length > 0)
+            return
+        if (Link.active)
+            Link.apply()
+        else
+            setupPage.startChecked()
+    }
+    function togglePlay() {
+        if (Scenario.state === "playing")
+            Scenario.pause()
+        else if (Scenario.state === "paused" || Scenario.playBlockedReason === "")
+            Scenario.play()
+    }
+    Shortcut {
+        sequence: "Space"
+        context: Qt.ApplicationShortcut
+        enabled: Link.active && win.shortcutsOn && !win.typing()
+        onActivated: Link.setCut(!Link.cut)
+    }
+    Shortcut { sequences: ["Ctrl+Return", "Ctrl+Enter"]; context: Qt.ApplicationShortcut; enabled: win.shortcutsOn; onActivated: win.startOrApply() }
+    Shortcut { sequence: "Ctrl+P"; context: Qt.ApplicationShortcut; enabled: win.shortcutsOn; onActivated: win.togglePlay() }
+    Shortcut { sequence: "Ctrl+."; context: Qt.ApplicationShortcut; enabled: win.shortcutsOn; onActivated: Scenario.stop() }
+    Shortcut { sequence: "F1"; context: Qt.ApplicationShortcut; enabled: win.shortcutsOn; onActivated: shortcutsDialog.open() }
+    Repeater {
+        model: 5
+        Item {
+            required property int index
+            Shortcut {
+                sequence: "Ctrl+" + (index + 1)
+                context: Qt.ApplicationShortcut
+                enabled: index < pages.count && win.shortcutsOn
+                onActivated: pages.currentIndex = index
+            }
+        }
+    }
+
+    Dialog {
+        id: shortcutsDialog
+        objectName: "shortcutsDialog"
+        title: "Keyboard shortcuts"
+        modal: true
+        focus: true
+        parent: Overlay.overlay
+        anchors.centerIn: parent
+        width: 440
+        standardButtons: Dialog.Close
+        readonly property var rows: [
+            ["Space", "CUT LINK / RESTORE (not while typing)"],
+            ["Esc", "Leave a text field"],
+            ["Ctrl+Enter", "Start the link, or Apply changes"],
+            ["Ctrl+P", "Play / pause the scenario"],
+            ["Ctrl+.", "Stop the scenario"],
+            ["Ctrl+1 … " + pages.count, "Switch tabs"],
+            ["F1", "This list"],
+        ]
+        GridLayout {
+            anchors.fill: parent
+            columns: 2
+            columnSpacing: 24
+            rowSpacing: 6
+            Repeater {
+                model: shortcutsDialog.rows
+                delegate: Label {
+                    required property var modelData
+                    required property int index
+                    Layout.row: index
+                    Layout.column: 0
+                    font.family: Theme.mono
+                    font.bold: true
+                    text: modelData[0]
+                }
+            }
+            Repeater {
+                model: shortcutsDialog.rows
+                delegate: Label {
+                    required property var modelData
+                    required property int index
+                    Layout.row: index
+                    Layout.column: 1
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    text: modelData[1]
+                }
+            }
+        }
+    }
+
     // Shared file dialog: pages call ApplicationWindow.window.askSave/askOpen.
     FileDialog {
         id: fileDialog
@@ -197,9 +299,16 @@ ApplicationWindow {
                 }
                 onClicked: Link.setCut(!Link.cut)
                 ToolTip.visible: hovered
-                ToolTip.text: Link.cut ? "Restore the link (clears every cut source)" : "100% loss in both directions, now"
+                ToolTip.text: (Link.cut ? "Restore the link (clears every cut source)" : "100% loss in both directions, now")
+                              + "  (Space)"
             }
         }
+    }
+
+    // A click on empty background takes focus out of text fields, so Space works again.
+    TapHandler {
+        parent: win.contentItem
+        onTapped: if (win.typing()) win.activeFocusItem.focus = false
     }
 
     ColumnLayout {
@@ -266,17 +375,23 @@ ApplicationWindow {
                     id: pages
                     objectName: "pages"
                     Layout.fillWidth: true
-                    TabButton { text: "Setup" }
-                    TabButton { text: "Link" }
-                    TabButton { text: "Scenario" }
-                    TabButton { text: "Monitor" }
+                    component PageTab: TabButton {
+                        id: tab
+                        ToolTip.visible: hovered
+                        ToolTip.delay: 600
+                        ToolTip.text: "Ctrl+" + (TabBar.index + 1)
+                    }
+                    PageTab { text: "Setup" }
+                    PageTab { text: "Link" }
+                    PageTab { text: "Scenario" }
+                    PageTab { text: "Monitor" }
                     Component.onCompleted: currentIndex = Link.active ? 1 : 0
                 }
                 StackLayout {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     currentIndex: pages.currentIndex
-                    InterfacesPage {}
+                    InterfacesPage { id: setupPage }
                     LinkPage {}
                     ScenarioPage {}
                     MonitorPage {}
@@ -357,6 +472,11 @@ ApplicationWindow {
                     ToolTip.text: win.unreadErrors + (win.unreadErrors === 1 ? " new error" : " new errors") + " in the log"
                 }
                 Item { Layout.fillWidth: true }
+                ToolButton {
+                    Layout.preferredHeight: 24
+                    text: "Shortcuts (F1)"
+                    onClicked: shortcutsDialog.open()
+                }
             }
         }
     }

@@ -146,6 +146,8 @@ Item {
                                  && (Link.dirty || !Link.active)
                         Layout.fillWidth: true
                         onClicked: Link.apply()
+                        ToolTip.visible: hovered
+                        ToolTip.text: (Link.active ? "Apply the edits" : "Start the link") + "  (Ctrl+Enter)"
                     }
                     BusyIndicator { running: Link.busy; Layout.preferredHeight: 24; Layout.preferredWidth: 24 }
                 }

@@ -12,6 +12,8 @@
 
 #include <QApplication>
 #include <QDir>
+#include <QKeyEvent>
+#include <QQuickItem>
 #include <QQuickWindow>
 #include <QTimer>
 #include <QIcon>
@@ -82,6 +84,28 @@ QPalette darkPalette()
     return p;
 }
 
+// Esc in a text field leaves the field (text fields ignore Esc), so window
+// shortcuts like Space = CUT work again. Not inside popups: there Esc closes.
+class EscapeLeavesTextField : public QObject
+{
+public:
+    using QObject::QObject;
+    bool eventFilter(QObject *obj, QEvent *ev) override
+    {
+        if (ev->type() != QEvent::KeyPress || static_cast<QKeyEvent *>(ev)->key() != Qt::Key_Escape)
+            return false;
+        auto *window = qobject_cast<QQuickWindow *>(obj);
+        auto *item = window ? window->activeFocusItem() : nullptr;
+        if (!item || !item->inherits("QQuickTextInput"))
+            return false;
+        for (QQuickItem *p = item; p; p = p->parentItem())
+            if (p->inherits("QQuickOverlay"))
+                return false;
+        item->setFocus(false); // focusing an ancestor would keep the field's focus
+        return true;
+    }
+};
+
 } // namespace
 
 int main(int argc, char *argv[])
@@ -95,6 +119,7 @@ int main(int argc, char *argv[])
     QApplication::setPalette(darkPalette());
     QQuickStyle::setStyle("Fusion");
     installSignalHandlers(app);
+    app.installEventFilter(new EscapeLeavesTextField(&app));
 
     EventLog log;
     HelperClient helper(&log);
