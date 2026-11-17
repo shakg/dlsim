@@ -31,10 +31,21 @@ Item {
                                                  + "' has unsaved changes. Discard them?", "Discard", action)
     }
 
+    // Save under the timeline's own name; a built-in name can't be written, so ask for a new one.
     function saveCurrent() {
-        const name = Scenario.name.trim()
+        if (Presets.isBuiltinScenario(Scenario.name.trim()))
+            saveAsDialog.openWith(Scenario.name.trim() + " (copy)")
+        else
+            saveAs(Scenario.name)
+    }
+
+    function saveAs(newName) {
+        const name = newName.trim()
         const doSave = () => {
-            if (Presets.saveScenario(Scenario.toMap())) {
+            const m = Scenario.toMap()
+            m.name = name
+            if (Presets.saveScenario(m)) {
+                Scenario.name = name
                 Scenario.markSaved()
                 root.selectedScenario = name
             }
@@ -92,7 +103,14 @@ Item {
                         root.unlessUnsaved(() => Scenario.load(Presets.scenario(name)))
                     }
                 }
-                Button { text: "Save"; onClicked: root.saveCurrent() }
+                Button {
+                    text: "Save"
+                    onClicked: root.saveCurrent()
+                    ToolTip.visible: hovered
+                    ToolTip.text: Presets.isBuiltinScenario(Scenario.name.trim())
+                                  ? "Built-in scenarios can't be changed: save a copy" : "Save as '" + Scenario.name + "'"
+                }
+                Button { text: "Save as…"; onClicked: saveAsDialog.openWith(Scenario.name.trim()) }
                 Button {
                     text: "Delete"
                     enabled: root.hasSelection && !Presets.isBuiltinScenario(root.selectedScenario)
@@ -331,6 +349,47 @@ Item {
                 }
             }
             Item { Layout.fillHeight: true }
+        }
+    }
+    Dialog {
+        id: saveAsDialog
+        objectName: "scenarioSaveAsDialog"
+        title: "Save scenario as"
+        modal: true
+        parent: Overlay.overlay
+        anchors.centerIn: parent
+        width: 420
+        standardButtons: Dialog.Save | Dialog.Cancel
+        function openWith(name) {
+            saveAsName.text = name
+            open()
+        }
+        onOpened: { saveAsName.forceActiveFocus(); saveAsName.selectAll() }
+        onAccepted: root.saveAs(saveAsName.text)
+        Component.onCompleted: standardButton(Dialog.Save).enabled = Qt.binding(() => saveAsName.text.trim().length > 0
+                                                                                && !Presets.isBuiltinScenario(saveAsName.text.trim()))
+        ColumnLayout {
+            anchors.fill: parent
+            Label { text: "Name" }
+            TextField {
+                id: saveAsName
+                Layout.fillWidth: true
+                selectByMouse: true
+                onAccepted: if (saveAsDialog.standardButton(Dialog.Save).enabled) saveAsDialog.accept()
+            }
+            Label {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                visible: Presets.isBuiltinScenario(saveAsName.text.trim())
+                color: Theme.danger
+                text: "'" + saveAsName.text.trim() + "' is a built-in scenario; choose another name"
+            }
+            Label {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                color: Theme.textDim
+                text: "Saved to " + Presets.configDir + "/scenarios/"
+            }
         }
     }
 }
